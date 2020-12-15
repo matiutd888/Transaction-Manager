@@ -10,20 +10,13 @@ public class Transaction {
     private TransactionState state;
     private long startTime;
     private Thread thread;
-    private List<Resource> resourcesChangedByTransaction;
-    private List<ResourceOperation> operationsApplied;
-    private Set<ResourceId> controlledResources;
+    private Map<Resource, List<ResourceOperation>> resourcesChangedByTransaction;
+
     public Transaction(long startTime, Thread thread) {
         this.startTime = startTime;
         this.thread = thread;
         state = TransactionState.NOT_ABORTED;
-        resourcesChangedByTransaction = new LinkedList<>();
-        operationsApplied = new LinkedList<>();
-        controlledResources = new TreeSet<>();
-    }
-
-    public List<ResourceOperation> getOperationsApplied() {
-        return operationsApplied;
+        resourcesChangedByTransaction = new HashMap<>();
     }
 
     public TransactionState getState() {
@@ -34,36 +27,21 @@ public class Transaction {
         return startTime;
     }
 
-    public List<Resource> getResourcesChangedByTransaction() {
-        return resourcesChangedByTransaction;
-    }
-
-    public void commit() {
-
+    public Set<Resource> getResourcesChanged() {
+        return resourcesChangedByTransaction.keySet();
     }
 
     public void rollback() {
-        int numOfOperations = resourcesChangedByTransaction.size();
-        Iterator headRes = resourcesChangedByTransaction.iterator();
-        Iterator headOp = operationsApplied.iterator();
-        while (headRes.hasNext()) {
-            Resource resource = (Resource) headRes.next();
-            ResourceOperation operation = (ResourceOperation) headOp.next();
-            operation.undo(resource);
+        for (Map.Entry<Resource, List<ResourceOperation>> entry : resourcesChangedByTransaction.entrySet()) {
+            for (ResourceOperation op : entry.getValue()) {
+                op.undo(entry.getKey());
+            }
         }
     }
 
     public void updateOperationHistory(Resource resource, ResourceOperation operation) {
-        resourcesChangedByTransaction.add(resource);
-        operationsApplied.add(operation);
-    }
-
-    public int getNumOfControlledResources() {
-        return controlledResources.size();
-    }
-
-    public void addControlledResource(ResourceId rid) {
-        controlledResources.add(rid);
+        resourcesChangedByTransaction.putIfAbsent(resource, new LinkedList<>());
+        resourcesChangedByTransaction.get(resource).add(operation);
     }
 
     public void cancel() {

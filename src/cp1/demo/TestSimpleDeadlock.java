@@ -49,7 +49,7 @@ public class TestSimpleDeadlock {
                     @Override
                     public void run() {
                         try {
-                            Thread.sleep((long) (0.5 * BASE_WAIT_TIME));
+                            Thread.sleep((long) (1 * BASE_WAIT_TIME));
                         } catch (Exception e){
                             e.printStackTrace();
                         }

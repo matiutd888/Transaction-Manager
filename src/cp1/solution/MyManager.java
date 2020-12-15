@@ -3,24 +3,23 @@ package cp1.solution;
 import cp1.base.*;
 
 import java.util.Collection;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
 
 public class MyManager implements TransactionManager {
-    private ConcurrentMap<Thread, Transaction> transactions; // Przechowuje Stan
-    // Transakcji dla każdego wątku
+    private ConcurrentHashMap<Thread, Transaction> transactions; // Current thread transaction/
     private LocalTimeProvider timeProvider;
     private ConcurrentMap<ResourceId, Resource> resources;
-    private ConcurrentMap<ResourceId, Thread> operating; // Przechowuje ID wątku który uzyskał dostęp do zasobu w aktywnej transakcji.
-    private ConcurrentMap<Thread, ResourceId> waiting; // Przechowuje Resource, na który czeka wątek o danym ID.
-    private ConcurrentMap<ResourceId, Semaphore> waitForResource; // Przechowuje semaphore na którym czekają wątki czekające na dany resource.
-    private ConcurrentMap<ResourceId, Integer> countWaitingForResource; // Przechowuje liczbę wątków czekających na dany resos
+    private ConcurrentMap<ResourceId, Thread> operating; // Which thread has access to resource.
+    private ConcurrentMap<Thread, ResourceId> waiting; // Holds information about a resource that a thred is waiting for.
+    private ConcurrentMap<ResourceId, Semaphore> waitForResource; // For every Resource it stores a semaphore that is used to wait for resource to get free.
+    private ConcurrentMap<ResourceId, Integer> countWaitingForResource; // Holds information about number of threads waiting for resource.
 
     public MyManager(Collection<Resource> resources, LocalTimeProvider timeProvider) {
         this.resources = new ConcurrentHashMap<>();
         waitForResource = new ConcurrentHashMap<>();
-
         for (Resource r : resources) {
             this.resources.put(r.getId(), r);
             waitForResource.put(r.getId(), new Semaphore(0, true));
@@ -35,23 +34,27 @@ public class MyManager implements TransactionManager {
     @Override
     public void startTransaction() throws AnotherTransactionActiveException {
         Thread currentThread = Thread.currentThread();
+
+        // If there exist other active transaction, raise AnotherTransactionActive.
         if (transactions.containsKey(currentThread))
             throw new AnotherTransactionActiveException();
         Transaction transaction = new Transaction(timeProvider.getTime(), currentThread);
         transactions.put(currentThread, transaction);
     }
 
-
     @Override
     public void operateOnResourceInCurrentTransaction(ResourceId rid, ResourceOperation operation) throws
             NoActiveTransactionException, UnknownResourceIdException, ActiveTransactionAborted, ResourceOperationException, InterruptedException {
         Thread currentThread = Thread.currentThread();
-        if (!isTransactionActive())
+        Transaction currTransaction = transactions.get(currentThread);
+        if (currTransaction == null)
             throw new NoActiveTransactionException();
-        if (isTransactionAborted())
+        if (currTransaction.getState() == TransactionState.ABORTED) {
             throw new ActiveTransactionAborted();
-        if (resources.get(rid) == null)
+        }
+        if (resources.get(rid) == null) {
             throw new UnknownResourceIdException(rid);
+        }
 
         Thread operatingThread;
         boolean hasAccess = false;
@@ -60,32 +63,35 @@ public class MyManager implements TransactionManager {
             hasAccess = (operatingThread == null && countWaitingForResource.getOrDefault(rid, 0) == 0)
                     || operatingThread == currentThread;
             if (hasAccess) {
-                operating.put(rid, currentThread); // Zatwierdź, że to Ty teraz czekasz.
+                operating.put(rid, currentThread); // Show, that you are indeed having access.
             } else {
-                // Zapisz się na czekanie
+                // Indicate, that you will be waiting.
                 waiting.put(currentThread, rid);
                 int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
                 countWaitingForResource.put(rid, howManyWaiting + 1);
             }
         }
-        Transaction currTransaction = transactions.get(currentThread);
 
         if (!hasAccess) {
+            // If you are going to be waiting because a
+            // awaken resource hasnt claimed his resource
+            // dont check for Cycle, it is not possible.
             if (operatingThread != null)
                 checkForCycle(rid);
             Semaphore s = waitForResource.get(rid);
             try {
                 s.acquire();
             } catch (InterruptedException interruptedException) {
-                waiting.remove(currentThread, rid);
-
-                int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
-                countWaitingForResource.put(rid, howManyWaiting - 1);
-
+                // You didnt get access, undo your waiting.
+                synchronized (operating) {// TODO do i need ochrona for this?
+                    waiting.remove(currentThread, rid);
+                    int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
+                    countWaitingForResource.put(rid, howManyWaiting - 1);
+                }
                 throw interruptedException;
             }
-            // currTransaction.addControlledResource(rid); // tę informację i tak sprawdzam tylko ja
             synchronized (operating) {
+                // ACCESS claimed NOW
                 // operating.remove(rid);
                 operating.put(rid, currentThread);
                 waiting.remove(currentThread, rid);
@@ -100,28 +106,30 @@ public class MyManager implements TransactionManager {
             throw roe;
         }
         if (currentThread.isInterrupted()) {
-            operation.undo(res); // TODO czy na pewno?
+            operation.undo(res);
             throw new InterruptedException();
         }
-
         currTransaction.updateOperationHistory(res, operation);
     }
 
     @Override
     public void commitCurrentTransaction() throws NoActiveTransactionException, ActiveTransactionAborted {
-        Thread thread = Thread.currentThread();
-        if (!isTransactionActive())
+        Thread currentThread = Thread.currentThread();
+        Transaction currentTransaction = transactions.get(currentThread);
+        if (currentTransaction == null)
             throw new NoActiveTransactionException();
         if (isTransactionAborted())
             throw new ActiveTransactionAborted();
-        Transaction transaction = transactions.get(thread);
-        if (transaction == null)
-            throw new NoActiveTransactionException();
-        transactions.remove(thread);
+
+        transactions.remove(currentThread);
+
+        // Free resources.
+        Set<Resource> changedResources = currentTransaction.getResourcesChanged();
         synchronized (operating) {
-            for (Resource r : transaction.getResourcesChangedByTransaction()) {
-                int howManyWaiting = countWaitingForResource.getOrDefault(r.getId(), 0);
-                operating.remove(r.getId());
+            for (Resource r : changedResources) {
+                ResourceId rid = r.getId();
+                int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
+                operating.remove(rid);
                 if (howManyWaiting > 0) {
                     Semaphore s = waitForResource.get(r.getId());
                     s.release();
@@ -132,7 +140,7 @@ public class MyManager implements TransactionManager {
 
     void checkForCycle(ResourceId resourceId) {
         boolean end = false;
-        boolean czyCykl = false;
+        boolean isCycle = false;
         ResourceId startResource = resourceId;
         synchronized (operating) {
             Thread itThread = operating.get(resourceId);
@@ -141,8 +149,8 @@ public class MyManager implements TransactionManager {
             while (!end) {
                 ResourceId waitingRes = waiting.get(itThread);
                 if (waitingRes == startResource) {
-                    // Znaleziono cykl;
-                    czyCykl = true;
+                    // Cycle found!
+                    isCycle = true;
                     end = true;
                 }
                 if (waitingRes == null)
@@ -159,8 +167,8 @@ public class MyManager implements TransactionManager {
                     youngestThread = itThread;
                 }
             }
-            if (czyCykl) {
-                // obudź
+            if (isCycle) {
+                // cancel
                 Transaction toCancel = transactions.get(youngestThread);
                 toCancel.cancel();
                 youngestThread.interrupt();
@@ -171,19 +179,23 @@ public class MyManager implements TransactionManager {
 
     @Override
     public void rollbackCurrentTransaction() {
-        Thread thread = Thread.currentThread();
-        Transaction transaction = transactions.get(thread);
-        if (transaction == null)
+        Thread currentThread = Thread.currentThread();
+        Transaction currentTransaction = transactions.get(currentThread);
+        if (currentTransaction == null)
             return;
-        transactions.remove(thread);
-        transaction.rollback();
+        transactions.remove(currentThread);
+        currentTransaction.rollback();
+        // Free resources.
+        Set<Resource> changedResources = currentTransaction.getResourcesChanged();
         synchronized (operating) {
-            for (Resource r : transaction.getResourcesChangedByTransaction()) {
-                Semaphore s = waitForResource.get(r.getId());
-                if (s.hasQueuedThreads())
+            for (Resource r : changedResources) {
+                ResourceId rid = r.getId();
+                int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
+                operating.remove(rid);
+                if (howManyWaiting > 0) {
+                    Semaphore s = waitForResource.get(r.getId());
                     s.release();
-                else
-                    operating.remove(thread);
+                }
             }
         }
     }
