@@ -91,8 +91,9 @@ public class MyManager implements TransactionManager {
                 }
                 throw interruptedException;
             }
+            // If a thread made it here, it has access to resource.
             synchronized (operating) {
-                // ACCESS claimed NOW
+
                 // operating.remove(rid);
                 operating.put(rid, currentThread);
                 waiting.remove(currentThread, rid);
@@ -143,9 +144,10 @@ public class MyManager implements TransactionManager {
         boolean end = false;
         boolean isCycle = false;
         ResourceId startResource = resourceId;
+        Thread youngestThread;
         synchronized (operating) {
             Thread itThread = operating.get(resourceId);
-            Thread youngestThread = itThread;
+            youngestThread = itThread;
             long maxTime = transactions.get(itThread).getStartTime();
             while (!end) {
                 ResourceId waitingRes = waiting.get(itThread);
@@ -172,17 +174,17 @@ public class MyManager implements TransactionManager {
                     youngestThread = itThread;
                 }
             }
-            if (isCycle) {
-                System.out.println("START TIMES");
-                for (Map.Entry<Thread, Transaction> e : transactions.entrySet()) {
-                    System.out.println(e.getKey().getId() + " start time = " + e.getValue().getStartTime());
-                }
-                System.out.println("Cykl wykryty, wątek: " + youngestThread.getId());
-                // cancel
-                Transaction toCancel = transactions.get(youngestThread);
-                toCancel.cancel();
-                youngestThread.interrupt();
+        }
+        if (isCycle) {
+            System.out.println("START TIMES");
+            for (Map.Entry<Thread, Transaction> e : transactions.entrySet()) {
+                System.out.println(e.getKey().getId() + " start time = " + e.getValue().getStartTime());
             }
+            System.out.println("Cykl wykryty, wątek: " + youngestThread.getId());
+            // cancel
+            Transaction toCancel = transactions.get(youngestThread);
+            toCancel.cancel();
+            youngestThread.interrupt();
         }
 
     }
