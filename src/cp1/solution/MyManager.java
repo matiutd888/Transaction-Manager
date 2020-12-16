@@ -67,7 +67,7 @@ public class MyManager implements TransactionManager {
             if (hasAccess) {
                 operating.put(rid, currentThread); // Show, that you are indeed having access.
             } else {
-                // Indicate, that you will be waiting.
+                // Mark, that you will be waiting.
                 waiting.put(currentThread, rid);
                 int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
                 countWaitingForResource.put(rid, howManyWaiting + 1);
@@ -159,7 +159,6 @@ public class MyManager implements TransactionManager {
                     return;
                 itThread = operating.get(waitingRes);
                 if (itThread == null) {
-                    // System.out.println("NIKT NIE OPERUJE A KTOS CZEKA? WTF");
                     return;
                 }
                 Transaction itTransaction = transactions.get(itThread);
