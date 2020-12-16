@@ -48,6 +48,7 @@ public class TestSimpleDeadlock {
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
+                        System.out.println("0, ID = " + Thread.currentThread().getId());
                         try {
                             Thread.sleep((long) (1 * BASE_WAIT_TIME));
                         } catch (Exception e){
@@ -82,7 +83,6 @@ public class TestSimpleDeadlock {
                                 NoActiveTransactionException |
                                 UnknownResourceIdException |
                                 ResourceOperationException e) {
-                            throw new AssertionError(e);
                         } finally {
                             tm.rollbackCurrentTransaction();
                         }
@@ -93,6 +93,7 @@ public class TestSimpleDeadlock {
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
+                        System.out.println("1, ID = " + Thread.currentThread().getId());
                         try {
                             Thread.sleep(1 * BASE_WAIT_TIME);
                         } catch (InterruptedException e) {
@@ -143,6 +144,7 @@ public class TestSimpleDeadlock {
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
+                        System.out.println("2, ID = " + Thread.currentThread().getId());
                         try {
                             Thread.sleep(1 * BASE_WAIT_TIME);
                         } catch (InterruptedException e) {

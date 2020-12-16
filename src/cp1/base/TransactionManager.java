@@ -42,4 +42,6 @@ public interface TransactionManager {
 
 	public boolean isTransactionAborted();
 
+	// DEBUG
+	void print();
 }

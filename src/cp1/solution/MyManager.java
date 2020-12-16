@@ -2,7 +2,9 @@ package cp1.solution;
 
 import cp1.base.*;
 
+import javax.annotation.processing.SupportedSourceVersion;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -138,7 +140,7 @@ public class MyManager implements TransactionManager {
         }
     }
 
-    void checkForCycle(ResourceId resourceId) {
+    private void checkForCycle(ResourceId resourceId) {
         boolean end = false;
         boolean isCycle = false;
         ResourceId startResource = resourceId;
@@ -168,6 +170,11 @@ public class MyManager implements TransactionManager {
                 }
             }
             if (isCycle) {
+                System.out.println("START TIMES");
+                for (Map.Entry<Thread, Transaction> e : transactions.entrySet()) {
+                    System.out.println(e.getKey().getId() + " start time = " + e.getValue().getStartTime());
+                }
+                System.out.println("Cykl wykryty, wątek: " + youngestThread.getId());
                 // cancel
                 Transaction toCancel = transactions.get(youngestThread);
                 toCancel.cancel();
@@ -215,5 +222,16 @@ public class MyManager implements TransactionManager {
         if (t == null)
             return false;
         return t.getState() == TransactionState.ABORTED;
+    }
+
+
+    // DEBUG
+
+    public void print() {
+        System.out.println(transactions.size() + ", "
+        + operating.size() + ", "
+        + waiting.size() + ", "
+        + waitForResource.size() + ", "
+        + countWaitingForResource);
     }
 }
