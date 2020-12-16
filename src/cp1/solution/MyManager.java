@@ -72,17 +72,16 @@ public class MyManager implements TransactionManager {
                 waiting.put(currentThread, rid);
                 int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
                 countWaitingForResource.put(rid, howManyWaiting + 1);
-
+                if (operatingThread != null) {
+                    checkForCycle(rid);
+                }
             }
         }
-
         if (!hasAccess) {
             // If you are going to be waiting because a
             // awaken resource hasnt claimed his resource
             // dont check for Cycle, it is not possible.
-            if (operatingThread != null) {
-                checkForCycle(rid);
-            }
+
             Semaphore s = waitForResource.get(rid);
             try {
                 s.acquire();
@@ -159,34 +158,35 @@ public class MyManager implements TransactionManager {
         boolean isCycle = false;
         ResourceId startResource = resourceId;
         Thread youngestThread;
-        synchronized (operating) {
-            Thread itThread = operating.get(resourceId);
-            youngestThread = itThread;
-            long maxTime = transactions.get(itThread).getStartTime();
-            while (!end) {
-                ResourceId waitingRes = waiting.get(itThread);
-                if (waitingRes == startResource) {
-                    // Cycle found!
-                    isCycle = true;
-                    end = true;
-                }
-                if (waitingRes == null)
-                    return;
-                itThread = operating.get(waitingRes);
-                if (itThread == null)
-                    return;
 
-                Transaction itTransaction = transactions.get(itThread);
+        Thread itThread = operating.get(resourceId);
+        if (itThread == null)
+            return;
+        youngestThread = itThread;
+        long maxTime = transactions.get(itThread).getStartTime();
+        while (!end) {
+            ResourceId waitingRes = waiting.get(itThread);
+            if (waitingRes == startResource) {
+                // Cycle found!
+                isCycle = true;
+                end = true;
+            }
+            if (waitingRes == null)
+                return;
+            itThread = operating.get(waitingRes);
+            if (itThread == null)
+                return;
 
-                // Shouldnt be nessesarry, but lets check anyway.
-                if (itTransaction.getState() == TransactionState.ABORTED)
-                    return;
+            Transaction itTransaction = transactions.get(itThread);
 
-                long time = itTransaction.getStartTime();
-                if (time > maxTime || (time == maxTime && itThread.getId() > youngestThread.getId())) {
-                    maxTime = time;
-                    youngestThread = itThread;
-                }
+            // Shouldnt be nessesarry, but lets check anyway.
+            if (itTransaction.getState() == TransactionState.ABORTED)
+                return;
+
+            long time = itTransaction.getStartTime();
+            if (time > maxTime || (time == maxTime && itThread.getId() > youngestThread.getId())) {
+                maxTime = time;
+                youngestThread = itThread;
             }
         }
         if (isCycle) {

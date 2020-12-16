@@ -9,7 +9,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class Przeplot {
-    private final static long BASE_WAIT_TIME = 500;
+    private final static long BASE_WAIT_TIME = 25;
 
     public static void main(String[] args) {
         Long time1 = System.currentTimeMillis();
@@ -74,7 +74,7 @@ public class Przeplot {
             public void run() {
                 for (int i = 0; i < 3; i++ ){
                     try {
-                        Thread.sleep(4 * BASE_WAIT_TIME);
+                        Thread.sleep(2 * BASE_WAIT_TIME);
                     } catch (InterruptedException e) {
                         throw new AssertionError(e);
                     }
