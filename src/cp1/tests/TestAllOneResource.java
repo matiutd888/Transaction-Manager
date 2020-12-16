@@ -1,4 +1,4 @@
-package cp1.demo;
+package cp1.tests;
 
 import cp1.base.*;
 import cp1.solution.TransactionManagerFactory;
@@ -8,17 +8,16 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class Przeplot {
+public class TestAllOneResource {
     private final static long BASE_WAIT_TIME = 500;
 
     public static void main(String[] args) {
         Long time1 = System.currentTimeMillis();
         // Set up resources.
         ResourceImpl r1 = new ResourceImpl(ResourceIdImpl.generate());
-        ResourceImpl r2 = new ResourceImpl(ResourceIdImpl.generate());
         List<Resource> resources =
                 Collections.unmodifiableList(
-                        Arrays.asList(r1, r2)
+                        Arrays.asList(r1)
                 );
 
 
@@ -33,78 +32,53 @@ public class Przeplot {
         // Set up threads operation on the resources.
         ArrayList<Thread> threads = new ArrayList<Thread>();
 
-        threads.add(new Thread(new Runnable() {
+        Runnable mRunnable = (new Runnable() {
             @Override
             public void run() {
-                for (int i = 0; i < 3; i++ ){
-                    try {
-                        Thread.sleep(2 * BASE_WAIT_TIME);
-                    } catch (InterruptedException e) {
-                        throw new AssertionError(e);
+                try {
+                    Thread.sleep(2 * BASE_WAIT_TIME);
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+                try {
+                    tm.startTransaction();
+                } catch (AnotherTransactionActiveException e) {
+                    throw new AssertionError(e);
+                }
+                if (!tm.isTransactionActive()) {
+                    throw new AssertionError("Failed to start a transaction");
+                }
+                if (tm.isTransactionAborted()) {
+                    throw new AssertionError("Invalid transaction state");
+                }
+                try {
+                    tm.operateOnResourceInCurrentTransaction(
+                            r1.getId(),
+                            ResourceOpImpl.get()
+                    );
+                    Thread.sleep(1 * BASE_WAIT_TIME);
+                    tm.operateOnResourceInCurrentTransaction(
+                            r1.getId(),
+                            ResourceOpImpl.get()
+                    );
+                    tm.commitCurrentTransaction();
+                    if (tm.isTransactionActive()) {
+                        throw new AssertionError("Failed to commit a transaction");
                     }
-                    try {
-                        tm.startTransaction();
-                    } catch (AnotherTransactionActiveException e) {
-                        throw new AssertionError(e);
-                    }
-                    try {
-                        tm.operateOnResourceInCurrentTransaction(
-                                resources.get(i % 2).getId(),
-                                ResourceOpImpl.get()
-                        );
-                        Thread.sleep(3 * BASE_WAIT_TIME);
-                        tm.commitCurrentTransaction();
-                        if (tm.isTransactionActive()) {
-                            throw new AssertionError("Failed to commit a transaction");
-                        }
-                    } catch (InterruptedException |
-                            ActiveTransactionAborted |
-                            NoActiveTransactionException |
-                            ResourceOperationException |
-                            UnknownResourceIdException e) {
-                        throw new AssertionError(e);
-                    } finally {
-                        tm.rollbackCurrentTransaction();
-                    }
+                } catch (InterruptedException |
+                        ActiveTransactionAborted |
+                        NoActiveTransactionException |
+                        ResourceOperationException |
+                        UnknownResourceIdException e) {
+                    throw new AssertionError(e);
+                } finally {
+                    tm.rollbackCurrentTransaction();
                 }
             }
-        }));
-        threads.add(new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < 3; i++ ){
-                    try {
-                        Thread.sleep(4 * BASE_WAIT_TIME);
-                    } catch (InterruptedException e) {
-                        throw new AssertionError(e);
-                    }
-                    try {
-                        tm.startTransaction();
-                    } catch (AnotherTransactionActiveException e) {
-                        throw new AssertionError(e);
-                    }
-                    try {
-                        tm.operateOnResourceInCurrentTransaction(
-                                resources.get((i + 1) % 2).getId(),
-                                ResourceOpImpl.get()
-                        );
-                        Thread.sleep(1 * BASE_WAIT_TIME);
-                        tm.commitCurrentTransaction();
-                        if (tm.isTransactionActive()) {
-                            throw new AssertionError("Failed to commit a transaction");
-                        }
-                    } catch (InterruptedException |
-                            ActiveTransactionAborted |
-                            NoActiveTransactionException |
-                            ResourceOperationException |
-                            UnknownResourceIdException e) {
-                        throw new AssertionError(e);
-                    } finally {
-                        tm.rollbackCurrentTransaction();
-                    }
-                }
-            }
-        }));
+        });
+        threads.add(new Thread(mRunnable));
+        threads.add(new Thread(mRunnable));
+        threads.add(new Thread(mRunnable));
 
         // Start the threads and wait for them to finish.
         for (Thread t : threads) {
@@ -154,24 +128,24 @@ public class Przeplot {
         }
 
         public static synchronized ResourceId generate() {
-            return new ResourceIdImpl(next++);
+            return new TestAllOneResource.ResourceIdImpl(next++);
         }
 
         @Override
         public int compareTo(ResourceId other) {
-            if (!(other instanceof ResourceIdImpl)) {
+            if (!(other instanceof TestAllOneResource.ResourceIdImpl)) {
                 throw new RuntimeException("Comparing incompatible resource IDs");
             }
-            ResourceIdImpl second = (ResourceIdImpl) other;
+            TestAllOneResource.ResourceIdImpl second = (TestAllOneResource.ResourceIdImpl) other;
             return Integer.compare(this.value, second.value);
         }
 
         @Override
         public boolean equals(Object obj) {
-            if (!(obj instanceof ResourceIdImpl)) {
+            if (!(obj instanceof TestAllOneResource.ResourceIdImpl)) {
                 return false;
             }
-            ResourceIdImpl second = (ResourceIdImpl) obj;
+            TestAllOneResource.ResourceIdImpl second = (TestAllOneResource.ResourceIdImpl) obj;
             return this.value == second.value;
         }
 
@@ -211,7 +185,7 @@ public class Przeplot {
     }
 
     private static final class ResourceOpImpl extends ResourceOperation {
-        private final static ResourceOpImpl singleton = new ResourceOpImpl();
+        private final static TestAllOneResource.ResourceOpImpl singleton = new TestAllOneResource.ResourceOpImpl();
 
         private ResourceOpImpl() {
         }
@@ -227,27 +201,20 @@ public class Przeplot {
 
         @Override
         public void execute(Resource r) {
-            System.out.println("OPERACJA " + r.getId());
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            if (!(r instanceof ResourceImpl)) {
+            if (!(r instanceof TestAllOneResource.ResourceImpl)) {
                 throw new AssertionError("Unexpected resource type " +
                         r.getClass().getCanonicalName());
             }
-            ((ResourceImpl) r).incValue();
-            System.out.println("KONIEC OPERACJI " + r.getId());
+            ((TestAllOneResource.ResourceImpl) r).incValue();
         }
 
         @Override
         public void undo(Resource r) {
-            if (!(r instanceof ResourceImpl)) {
+            if (!(r instanceof TestAllOneResource.ResourceImpl)) {
                 throw new AssertionError("Unexpected resource type " +
                         r.getClass().getCanonicalName());
             }
-            ((ResourceImpl) r).decValue();
+            ((TestAllOneResource.ResourceImpl) r).decValue();
         }
     }
 }

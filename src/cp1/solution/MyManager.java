@@ -180,7 +180,7 @@ public class MyManager implements TransactionManager {
             for (Map.Entry<Thread, Transaction> e : transactions.entrySet()) {
                 System.out.println(e.getKey().getId() + " start time = " + e.getValue().getStartTime());
             }
-            System.out.println("Cykl wykryty, wątek: " + youngestThread.getId());
+            System.out.println("Cykl wykryty, watek: " + youngestThread.getId());
             // cancel
             Transaction toCancel = transactions.get(youngestThread);
             toCancel.cancel();
@@ -231,7 +231,6 @@ public class MyManager implements TransactionManager {
 
 
     // DEBUG
-
     public void print() {
         System.out.println(transactions.size() + ", "
                 + operating.size() + ", "

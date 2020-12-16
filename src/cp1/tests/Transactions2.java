@@ -5,7 +5,7 @@
  *
  * Author: Konrad Iwanicki (iwanicki@mimuw.edu.pl)
  */
-package cp1.demo;
+package cp1.tests;
 
 import java.util.ArrayList;
 import java.util.Arrays;

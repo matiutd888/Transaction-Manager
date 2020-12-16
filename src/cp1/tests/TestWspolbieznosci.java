@@ -1,4 +1,4 @@
-package cp1.demo;
+package cp1.tests;
 
 import cp1.base.*;
 import cp1.solution.TransactionManagerFactory;
