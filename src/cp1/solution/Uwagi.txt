@@ -22,4 +22,7 @@ Podobna sytuacja może
 
 1-2-3-4
 3 dostaje 4, 4 zaczyna czekać na 1,
-brak pętli a sprawdzanie zjebane.
+brak pętli
+
+// Wątek w nie zmniejszył liczby czekających jak go wywaliło,
+ktoś zwalnia resos, myśli że ktoś czeka, dupa.

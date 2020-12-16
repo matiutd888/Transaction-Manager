@@ -66,12 +66,13 @@ public class MyManager implements TransactionManager {
             hasAccess = (operatingThread == null && countWaitingForResource.getOrDefault(rid, 0) == 0)
                     || operatingThread == currentThread;
             if (hasAccess) {
-                operating.put(rid, currentThread); // Show, that you are indeed having access.
+                operating.put(rid, currentThread);
             } else {
                 // Mark, that you will be waiting.
                 waiting.put(currentThread, rid);
                 int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
                 countWaitingForResource.put(rid, howManyWaiting + 1);
+
             }
         }
 
@@ -87,11 +88,22 @@ public class MyManager implements TransactionManager {
                 s.acquire();
             } catch (InterruptedException interruptedException) {
                 // You didnt get access, undo your waiting.
-                synchronized (operating) {// TODO do i need ochrona for this?
+
+                synchronized (operating) {
                     waiting.remove(currentThread, rid);
+                    // TODO do i need ochrona for this?
                     int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
                     countWaitingForResource.put(rid, howManyWaiting - 1);
+                    // Kod na złośliwy przeplot: Po interrputedException
+                    // podczas czekania na resource wątek nie zdąży zaznaczyć, że nie jest już (jedynym)
+                    // czekającym, w tym samym czasie wątek mający dotyczas dostęp do resource zwalnia go.
+                    // Semafor będzie ustawiony na 1, ale wątek nie chce już z niego korzystać.
+                    // Ustawiamy więc semafor na 0.
+                    if (howManyWaiting == 1 && s.availablePermits() > 0) {
+                        s.drainPermits();
+                    }
                 }
+
                 throw interruptedException;
             }
             // If a thread made it here, it has access to resource.
@@ -230,7 +242,6 @@ public class MyManager implements TransactionManager {
             return false;
         return t.getState() == TransactionState.ABORTED;
     }
-
 
     // DEBUG
     public void print() {
