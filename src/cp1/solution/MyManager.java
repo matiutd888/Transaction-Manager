@@ -48,12 +48,14 @@ public class MyManager implements TransactionManager {
             NoActiveTransactionException, UnknownResourceIdException, ActiveTransactionAborted, ResourceOperationException, InterruptedException {
         Thread currentThread = Thread.currentThread();
         Transaction currTransaction = transactions.get(currentThread);
-        if (currTransaction == null)
+        Resource res = resources.get(rid);
+        if (currTransaction == null) {
             throw new NoActiveTransactionException();
+        }
         if (currTransaction.getState() == TransactionState.ABORTED) {
             throw new ActiveTransactionAborted();
         }
-        if (resources.get(rid) == null) {
+        if (res == null) {
             throw new UnknownResourceIdException(rid);
         }
 
@@ -77,8 +79,9 @@ public class MyManager implements TransactionManager {
             // If you are going to be waiting because a
             // awaken resource hasnt claimed his resource
             // dont check for Cycle, it is not possible.
-            if (operatingThread != null)
+            if (operatingThread != null) {
                 checkForCycle(rid);
+            }
             Semaphore s = waitForResource.get(rid);
             try {
                 s.acquire();
@@ -101,7 +104,6 @@ public class MyManager implements TransactionManager {
                 countWaitingForResource.put(rid, howManyWaiting - 1);
             }
         }
-        Resource res = resources.get(rid);
         try {
             operation.execute(res);
         } catch (ResourceOperationException roe) {
@@ -120,7 +122,7 @@ public class MyManager implements TransactionManager {
         Transaction currentTransaction = transactions.get(currentThread);
         if (currentTransaction == null)
             throw new NoActiveTransactionException();
-        if (isTransactionAborted())
+        if (currentTransaction.getState() == TransactionState.ABORTED)
             throw new ActiveTransactionAborted();
 
         transactions.remove(currentThread);
