@@ -2,7 +2,6 @@ package cp1.solution;
 
 import cp1.base.*;
 
-import javax.annotation.processing.SupportedSourceVersion;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -158,12 +157,17 @@ public class MyManager implements TransactionManager {
                 if (waitingRes == null)
                     return;
                 itThread = operating.get(waitingRes);
-                if (itThread == null) {
+                if (itThread == null)
                     return;
-                }
+
                 Transaction itTransaction = transactions.get(itThread);
+
+                // Shouldnt be nessesarry, but lets check anyway.
+                if (itTransaction.getState() == TransactionState.ABORTED)
+                    return;
+
                 long time = itTransaction.getStartTime();
-                if (time > maxTime) {
+                if (time > maxTime || (time == maxTime && itThread.getId() > youngestThread.getId())) {
                     maxTime = time;
                     youngestThread = itThread;
                 }
@@ -228,9 +232,9 @@ public class MyManager implements TransactionManager {
 
     public void print() {
         System.out.println(transactions.size() + ", "
-        + operating.size() + ", "
-        + waiting.size() + ", "
-        + waitForResource.size() + ", "
-        + countWaitingForResource);
+                + operating.size() + ", "
+                + waiting.size() + ", "
+                + waitForResource.size() + ", "
+                + countWaitingForResource);
     }
 }
