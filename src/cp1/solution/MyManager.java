@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
 
 public class MyManager implements TransactionManager {
+    private static final boolean debug = false;
     private ConcurrentHashMap<Thread, Transaction> transactions; // Current thread transaction/
     private LocalTimeProvider timeProvider;
     private ConcurrentMap<ResourceId, Resource> resources;
@@ -65,12 +66,14 @@ public class MyManager implements TransactionManager {
             operatingThread = operating.get(rid);
             int id = operatingThread == null ? -1 : (int) operatingThread.getId();
 
-            System.out.println("WĄTEK " + currentThread.getId() + " PROBUJE SIE DOSTAC DO " + rid + " w posiadaniu " + id);
+            if (debug)
+                System.out.println("WĄTEK " + currentThread.getId() + " PROBUJE SIE DOSTAC DO " + rid + " w posiadaniu " + id);
             hasAccess = (operatingThread == null && countWaitingForResource.getOrDefault(rid, 0) == 0)
                     || operatingThread == currentThread;
             if (hasAccess) {
                 operating.put(rid, currentThread);
-                System.out.println("WĄTEK " + currentThread.getId() + " DOSTAJE " + rid + " w posiadaniu " + id);
+                if (debug)
+                    System.out.println("WĄTEK " + currentThread.getId() + " DOSTAJE " + rid + " w posiadaniu " + id);
             } else {
                 // Mark, that you will be waiting.
                 waiting.put(currentThread, rid);
@@ -92,10 +95,11 @@ public class MyManager implements TransactionManager {
                 s.acquire();
             } catch (InterruptedException interruptedException) {
                 // You didnt get access, undo your waiting.
-                System.out.println("WĄTEK " + Thread.currentThread().getId() + " INTERRPUTED WHILE WAITING!");
+                if (debug)
+                    System.out.println("WĄTEK " + Thread.currentThread().getId() + " INTERRPUTED WHILE WAITING!");
                 synchronized (operating) {
                     waiting.remove(currentThread, rid);
-                    // TODO do i need ochrona for this?
+
                     int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
                     countWaitingForResource.put(rid, howManyWaiting - 1);
                     // Kod na złośliwy przeplot: Po interrputedException
@@ -107,14 +111,14 @@ public class MyManager implements TransactionManager {
                         s.drainPermits();
                     }
                 }
-
+                if (currTransaction.getState() == TransactionState.ABORTED)
+                    throw new ActiveTransactionAborted();
                 throw interruptedException;
             }
             // If a thread made it here, it has access to resource.
             synchronized (operating) {
-                System.out.println("WĄTEK " + currentThread.getId() + " DOSTAJE " + rid + " po czekaniu");
+                if (debug) System.out.println("WĄTEK " + currentThread.getId() + " DOSTAJE " + rid + " po czekaniu");
 
-                // operating.remove(rid);
                 operating.put(rid, currentThread);
                 waiting.remove(currentThread, rid);
                 int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
@@ -127,7 +131,8 @@ public class MyManager implements TransactionManager {
             throw roe;
         }
         if (currentThread.isInterrupted()) {
-            System.out.println("WĄTEK " + Thread.currentThread().getId() + " INTERRPUTED WHILE OPERATION! " + rid);
+            if (debug)
+                System.out.println("WĄTEK " + Thread.currentThread().getId() + " INTERRPUTED WHILE OPERATION! " + rid);
             operation.undo(res);
             throw new InterruptedException();
         }
@@ -136,7 +141,8 @@ public class MyManager implements TransactionManager {
 
     private void checkForCycle(ResourceId resourceId) {
         try {
-            System.out.println("WĄTEK " + Thread.currentThread().getId() + " SPRAWDZA CYKL CZEKAJĄC NA " + resourceId);
+            if (debug)
+                System.out.println("WĄTEK " + Thread.currentThread().getId() + " SPRAWDZA CYKL CZEKAJĄC NA " + resourceId);
             boolean end = false;
             boolean isCycle = false;
             ResourceId startResource = resourceId;
@@ -145,12 +151,14 @@ public class MyManager implements TransactionManager {
             Thread itThread = operating.get(resourceId);
             youngestThread = itThread;
 
-            long maxTime = -1;
+            /*long maxTime = -1;
             try {
                 maxTime = transactions.get(itThread).getStartTime();
             } catch (NullPointerException e) {
-                System.err.println("NULL POINTER EXCEPTION " + Thread.currentThread().getId() + ", " + itThread.getId() + ", " + resourceId);
-            }
+                if(debug) System.err.println("NULL POINTER EXCEPTION " + Thread.currentThread().getId() + ", " + itThread.getId() + ", " + resourceId);
+            }*/
+
+            long maxTime = transactions.get(itThread).getStartTime();
             while (!end) {
                 ResourceId waitingRes = waiting.get(itThread);
                 if (waitingRes == startResource) {
@@ -177,18 +185,18 @@ public class MyManager implements TransactionManager {
                 }
             }
             if (isCycle) {
-                System.out.println("START TIMES");
+                if (debug) System.out.println("START TIMES");
                 for (Map.Entry<Thread, Transaction> e : transactions.entrySet()) {
-                    System.out.println(e.getKey().getId() + " start time = " + e.getValue().getStartTime());
+                    if (debug) System.out.println(e.getKey().getId() + " start time = " + e.getValue().getStartTime());
                 }
-                System.out.println("Cykl wykryty, watek: " + youngestThread.getId());
+                if (debug) System.out.println("Cykl wykryty, watek: " + youngestThread.getId());
                 // cancel
                 Transaction toCancel = transactions.get(youngestThread);
                 toCancel.cancel();
                 youngestThread.interrupt();
             }
         } finally {
-            System.out.println("WĄTEK " + Thread.currentThread().getId() + " kończy sprawdzanie!");
+            if (debug) System.out.println("WĄTEK " + Thread.currentThread().getId() + " kończy sprawdzanie!");
         }
     }
 
@@ -210,7 +218,7 @@ public class MyManager implements TransactionManager {
                     ResourceId rid = entry.getKey();
                     int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
                     operating.remove(rid);
-                    System.out.println("WĄTEK " + currentThread.getId() + " removing " + rid);
+                    if (debug) System.out.println("WĄTEK " + currentThread.getId() + " removing " + rid);
                     if (howManyWaiting > 0) {
                         Semaphore s = waitForResource.get(rid);
                         s.release();
@@ -218,7 +226,7 @@ public class MyManager implements TransactionManager {
                 }
             }
             transactions.remove(currentThread);
-            System.out.println("WĄTEK " + currentThread.getId() + " usuwa transakcję!");
+            if (debug) System.out.println("WĄTEK " + currentThread.getId() + " usuwa transakcję!");
         }
     }
 
@@ -237,7 +245,7 @@ public class MyManager implements TransactionManager {
                     ResourceId rid = entry.getKey();
                     int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
                     operating.remove(rid);
-                    System.out.println("WĄTEK " + currentThread.getId() + " removing " + rid);
+                    if (debug) System.out.println("WĄTEK " + currentThread.getId() + " removing " + rid);
                     if (howManyWaiting > 0) {
                         Semaphore s = waitForResource.get(rid);
                         s.release();
@@ -245,7 +253,7 @@ public class MyManager implements TransactionManager {
                 }
             }
             transactions.remove(currentThread);
-            System.out.println("WĄTEK " + currentThread.getId() + " usuwa transakcję!");
+            if (debug) System.out.println("WĄTEK " + currentThread.getId() + " usuwa transakcję!");
         }
     }
 
@@ -266,9 +274,10 @@ public class MyManager implements TransactionManager {
         return t.getState() == TransactionState.ABORTED;
     }
 
+    // TODO czyszczenie flagi?
     // DEBUG
     public void print() {
-        System.out.println(transactions.size() + ", "
+        if (debug) System.out.println(transactions.size() + ", "
                 + operating.size() + ", "
                 + waiting.size() + ", "
                 + waitForResource.size() + ", "

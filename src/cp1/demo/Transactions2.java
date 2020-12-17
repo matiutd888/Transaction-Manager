@@ -121,7 +121,7 @@ public class Transactions2 {
             }
         }
         System.out.println("test passed");
-
+        System.exit(0);
     }
 
     private static final class Inputter implements Runnable {
