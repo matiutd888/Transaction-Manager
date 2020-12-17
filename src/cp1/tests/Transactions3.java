@@ -22,7 +22,7 @@ import java.util.List;
 
 public class Transactions3{
 
-	private final static long BASE_WAIT_TIME = 500;
+	private static final long BASE_WAIT_TIME = 500;
 
 	public static void main(String[] args) {
 		int licznik = 0;
@@ -253,7 +253,7 @@ public class Transactions3{
 		}
 	}
 
-	private final static void expectResourceValue(ResourceImpl r, long val) {
+	private static final void expectResourceValue(ResourceImpl r, long val) {
 		if (r.getValue() != val) {
 			throw new AssertionError(
 					"For resource " + r.getId() +
@@ -277,7 +277,7 @@ public class Transactions3{
 	}
 
 	private static final class ResourceIdImpl implements ResourceId {
-		private static volatile int next = 0;
+		private static volatile int next;
 
 		public static synchronized ResourceId generate() {
 			return new ResourceIdImpl(next++);
@@ -319,7 +319,7 @@ public class Transactions3{
 	}
 
 	private static final class ResourceImpl extends Resource {
-		private volatile long value = 0;
+		private volatile long value;
 
 		public ResourceImpl(ResourceId id) {
 			super(id);
@@ -343,7 +343,7 @@ public class Transactions3{
 	}
 
 	private static final class ResourceOpImpl extends ResourceOperation {
-		private final static ResourceOpImpl singleton = new ResourceOpImpl();
+		private static final ResourceOpImpl singleton = new ResourceOpImpl();
 
 		public static ResourceOperation get() {
 			return singleton;

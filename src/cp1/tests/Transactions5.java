@@ -24,7 +24,7 @@ import java.util.*;
 
 public class Transactions5 {
 
-    private final static long BASE_WAIT_TIME = 500;
+    private static final long BASE_WAIT_TIME = 500;
 
     public static void main(String[] args) {
         int licznik = 0;
@@ -51,7 +51,7 @@ public class Transactions5 {
             // Set up threads operation on the resources.
             ArrayList<Thread> threads = new ArrayList<Thread>();
             Random r = new Random();
-            int N = 10;
+            final int N = 10;
             for (int i = 0; i < N; i++) {
                 threads.add(
                         new Thread(new Runnable() {
@@ -153,7 +153,7 @@ public class Transactions5 {
         }
     }
 
-    private final static void expectResourceValue(ResourceImpl r, long val) {
+    private static final void expectResourceValue(ResourceImpl r, long val) {
         if (r.getValue() != val) {
             throw new AssertionError(
                     "For resource " + r.getId() +
@@ -177,7 +177,7 @@ public class Transactions5 {
     }
 
     private static final class ResourceIdImpl implements ResourceId {
-        private static volatile int next = 0;
+        private static volatile int next;
 
         public static synchronized ResourceId generate() {
             return new ResourceIdImpl(next++);
@@ -219,7 +219,7 @@ public class Transactions5 {
     }
 
     private static final class ResourceImpl extends Resource {
-        private volatile long value = 0;
+        private volatile long value;
 
         public ResourceImpl(ResourceId id) {
             super(id);
@@ -243,7 +243,7 @@ public class Transactions5 {
     }
 
     private static final class ResourceOpImpl extends ResourceOperation {
-        private final static ResourceOpImpl singleton = new ResourceOpImpl();
+        private static final ResourceOpImpl singleton = new ResourceOpImpl();
 
         public static ResourceOperation get() {
             return singleton;

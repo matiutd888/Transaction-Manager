@@ -9,11 +9,11 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
 
 public class MyManager implements TransactionManager {
-    // Current thread transaction.
-    private final ConcurrentHashMap<Thread, Transaction> transactions = new ConcurrentHashMap<>();
-
     private final LocalTimeProvider timeProvider;
     private final ConcurrentMap<ResourceId, Resource> resources = new ConcurrentHashMap<>();
+
+    // Current thread transaction.
+    private final ConcurrentMap<Thread, Transaction> transactions = new ConcurrentHashMap<>();
 
     // Which thread has access to resource.
     private final ConcurrentMap<ResourceId, Thread> operating = new ConcurrentHashMap<>();
@@ -64,7 +64,7 @@ public class MyManager implements TransactionManager {
         }
 
         Thread operatingThread;
-        boolean hasAccess = false;
+        boolean hasAccess;
         synchronized (operating) {
             operatingThread = operating.get(rid);
 
@@ -120,11 +120,8 @@ public class MyManager implements TransactionManager {
                 countWaitingForResource.put(rid, howManyWaiting - 1);
             }
         }
-        try {
-            operation.execute(res);
-        } catch (ResourceOperationException roe) {
-            throw roe;
-        }
+        operation.execute(res);
+
         if (currentThread.isInterrupted()) {
             operation.undo(res);
             throw new InterruptedException();
@@ -132,13 +129,12 @@ public class MyManager implements TransactionManager {
         currTransaction.updateOperationHistory(res, operation);
     }
 
-    private void checkForCycle(ResourceId resourceId) {
+    private void checkForCycle(ResourceId startResource) {
         boolean end = false;
         boolean isCycle = false;
-        ResourceId startResource = resourceId;
         Thread youngestThread;
 
-        Thread itThread = operating.get(resourceId);
+        Thread itThread = operating.get(startResource);
         youngestThread = itThread;
 
         long maxTime = transactions.get(itThread).getStartTime();
@@ -146,11 +142,11 @@ public class MyManager implements TransactionManager {
             ResourceId waitingRes = waiting.get(itThread);
             if (waitingRes == startResource) {
                 // Cycle found!
-                isCycle = true;
                 end = true;
             }
             if (waitingRes == null)
                 return;
+
             itThread = operating.get(waitingRes);
             if (itThread == null)
                 return;
@@ -167,12 +163,10 @@ public class MyManager implements TransactionManager {
                 youngestThread = itThread;
             }
         }
-        if (isCycle) {
-            // cancel
-            Transaction toCancel = transactions.get(youngestThread);
-            toCancel.cancel();
-            youngestThread.interrupt();
-        }
+        // cancel
+        Transaction toCancel = transactions.get(youngestThread);
+        toCancel.cancel();
+        youngestThread.interrupt();
     }
 
     private void freeResources() {

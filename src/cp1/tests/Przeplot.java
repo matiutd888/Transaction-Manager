@@ -9,7 +9,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class Przeplot {
-    private final static long BASE_WAIT_TIME = 25;
+    private static final long BASE_WAIT_TIME = 25;
 
     public static void main(String[] args) {
         Long time1 = System.currentTimeMillis();
@@ -119,7 +119,7 @@ public class Przeplot {
         }
     }
 
-    private final static void expectResourceValue(ResourceImpl r, long val) {
+    private static final void expectResourceValue(ResourceImpl r, long val) {
         if (r.getValue() != val) {
             throw new AssertionError(
                     "For resource " + r.getId() +
@@ -144,7 +144,7 @@ public class Przeplot {
     }
 
     private static final class ResourceIdImpl implements ResourceId {
-        private static volatile int next = 0;
+        private static volatile int next;
         private final int value;
 
         private ResourceIdImpl(int value) {
@@ -185,7 +185,7 @@ public class Przeplot {
     }
 
     private static final class ResourceImpl extends Resource {
-        private volatile long value = 0;
+        private volatile long value;
 
         public ResourceImpl(ResourceId id) {
             super(id);
@@ -209,7 +209,7 @@ public class Przeplot {
     }
 
     private static final class ResourceOpImpl extends ResourceOperation {
-        private final static ResourceOpImpl singleton = new ResourceOpImpl();
+        private static final ResourceOpImpl singleton = new ResourceOpImpl();
 
         private ResourceOpImpl() {
         }

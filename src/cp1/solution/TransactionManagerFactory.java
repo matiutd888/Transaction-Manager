@@ -31,9 +31,9 @@ public final class TransactionManagerFactory {
 	 * @return A new transaction manager for
 	 *     controlling the resources.
 	 */
-	public final static TransactionManager newTM(
-			Collection<Resource> resources,
-			LocalTimeProvider timeProvider
+    public static final TransactionManager newTM(
+            Collection<Resource> resources,
+            LocalTimeProvider timeProvider
 	) {
 		return new MyManager(resources, timeProvider);
 	}

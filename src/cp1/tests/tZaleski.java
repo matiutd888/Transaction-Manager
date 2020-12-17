@@ -5,28 +5,36 @@
  *
  * Author: Konrad Iwanicki (iwanicki@mimuw.edu.pl)
  */
-package cp1.demo;
-
-import cp1.base.*;
-import cp1.solution.TransactionManagerFactory;
+package cp1.tests;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import cp1.base.ResourceId;
+import cp1.base.ResourceOperation;
+import cp1.base.ResourceOperationException;
+import cp1.base.TransactionManager;
+import cp1.base.UnknownResourceIdException;
+import cp1.solution.TransactionManagerFactory;
+import cp1.base.ActiveTransactionAborted;
+import cp1.base.NoActiveTransactionException;
+import cp1.base.AnotherTransactionActiveException;
+import cp1.base.LocalTimeProvider;
+import cp1.base.Resource;
+import static java.util.Collections.max;
 
 /**
- * A "smoke test" for your implementation.
- *
+ * Test by @author Grzegorz B. Zaleski
+ * based on the work of
  * @author Konrad Iwanicki (iwanicki@mimuw.edu.pl)
  */
-public class Transactions {
+public class tZaleski {
 
     private static final long BASE_WAIT_TIME = 500;
 
     public static void main(String[] args) {
-        Long time1 = System.currentTimeMillis();
         // Set up resources.
         ResourceImpl r1 = new ResourceImpl(ResourceIdImpl.generate());
         ResourceImpl r2 = new ResourceImpl(ResourceIdImpl.generate());
@@ -59,12 +67,13 @@ public class Transactions {
                         } catch (AnotherTransactionActiveException e) {
                             throw new AssertionError(e);
                         }
-                        if (!tm.isTransactionActive()) {
+
+                        if (! tm.isTransactionActive()) {
                             throw new AssertionError("Failed to start a transaction");
                         }
                         try {
                             tm.operateOnResourceInCurrentTransaction(
-                                    r1.getId(),
+                                    new ResourceImpl(ResourceIdImpl.generate()).getId(),
                                     ResourceOpImpl.get()
                             );
                             Thread.sleep(4 * BASE_WAIT_TIME);
@@ -72,101 +81,11 @@ public class Transactions {
                             if (tm.isTransactionActive()) {
                                 throw new AssertionError("Failed to commit a transaction");
                             }
-                        } catch (InterruptedException |
-                                ActiveTransactionAborted |
-                                NoActiveTransactionException |
-                                UnknownResourceIdException |
-                                ResourceOperationException e) {
-                            throw new AssertionError(e);
-                        } finally {
-                            tm.rollbackCurrentTransaction();
-                        }
-                    }
-                })
-        );
-        threads.add(
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            Thread.sleep(1 * BASE_WAIT_TIME);
-                        } catch (InterruptedException e) {
-                            throw new AssertionError(e);
-                        }
-                        try {
-                            tm.startTransaction();
-                        } catch (AnotherTransactionActiveException e) {
-                            throw new AssertionError(e);
-                        }
-                        if (!tm.isTransactionActive()) {
-                            throw new AssertionError("Failed to start a transaction");
-                        }
-                        try {
-                            tm.operateOnResourceInCurrentTransaction(
-                                    r2.getId(),
-                                    ResourceOpImpl.get()
-                            );
-                            Thread.sleep(6 * BASE_WAIT_TIME);
-                            tm.operateOnResourceInCurrentTransaction(
-                                    r3.getId(),
-                                    ResourceOpImpl.get()
-                            );
-                            Thread.sleep(1 * BASE_WAIT_TIME);
-                        } catch (InterruptedException |
-                                ActiveTransactionAborted |
-                                NoActiveTransactionException |
-                                ResourceOperationException |
-                                UnknownResourceIdException e) {
-                            throw new AssertionError(e);
-                        } finally {
-                            tm.rollbackCurrentTransaction();
-                            if (tm.isTransactionActive()) {
-                                throw new AssertionError("Failed to rollback a transaction");
-                            }
-                        }
-                    }
-                })
-        );
-        threads.add(
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            Thread.sleep(2 * BASE_WAIT_TIME);
-                        } catch (InterruptedException e) {
-                            throw new AssertionError(e);
-                        }
-                        try {
-                            tm.startTransaction();
-                        } catch (AnotherTransactionActiveException e) {
-                            throw new AssertionError(e);
-                        }
-                        if (!tm.isTransactionActive()) {
-                            throw new AssertionError("Failed to start a transaction");
-                        }
-                        if (tm.isTransactionAborted()) {
-                            throw new AssertionError("Invalid transaction state");
-                        }
-                        try {
-                            tm.operateOnResourceInCurrentTransaction(
-                                    r2.getId(),
-                                    ResourceOpImpl.get()
-                            );
-                            Thread.sleep(1 * BASE_WAIT_TIME);
-                            tm.operateOnResourceInCurrentTransaction(
-                                    r1.getId(),
-                                    ResourceOpImpl.get()
-                            );
-                            tm.commitCurrentTransaction();
-                            if (tm.isTransactionActive()) {
-                                throw new AssertionError("Failed to commit a transaction");
-                            }
-                        } catch (InterruptedException |
-                                ActiveTransactionAborted |
-                                NoActiveTransactionException |
-                                ResourceOperationException |
-                                UnknownResourceIdException e) {
-                            throw new AssertionError(e);
+                        } catch (Exception e) {
+                            if (e instanceof UnknownResourceIdException)
+                                System.out.println("Sehr gut Amigo!");
+                            else
+                                throw new AssertionError("Wystapil przypau");
                         } finally {
                             tm.rollbackCurrentTransaction();
                         }
@@ -179,17 +98,15 @@ public class Transactions {
         }
         try {
             for (Thread t : threads) {
-                t.join(10 * BASE_WAIT_TIME);
+                t.join(); // czekac do konca
             }
         } catch (InterruptedException e) {
             throw new AssertionError("The main thread has been interrupted");
         }
         // Check the results.
-        expectResourceValue(r1, 2);
-        expectResourceValue(r2, 1);
+        expectResourceValue(r1, 0);
+        expectResourceValue(r2, 0);
         expectResourceValue(r3, 0);
-
-        System.out.println(System.currentTimeMillis() - time1);
     }
 
     private static final void expectResourceValue(ResourceImpl r, long val) {
@@ -217,39 +134,36 @@ public class Transactions {
 
     private static final class ResourceIdImpl implements ResourceId {
         private static volatile int next;
-        private final int value;
-
-        private ResourceIdImpl(int value) {
-            this.value = value;
-        }
 
         public static synchronized ResourceId generate() {
             return new ResourceIdImpl(next++);
         }
 
+        private final int value;
+
+        private ResourceIdImpl(int value) {
+            this.value = value;
+        }
         @Override
         public int compareTo(ResourceId other) {
-            if (!(other instanceof ResourceIdImpl)) {
+            if (! (other instanceof ResourceIdImpl)) {
                 throw new RuntimeException("Comparing incompatible resource IDs");
             }
-            ResourceIdImpl second = (ResourceIdImpl) other;
+            ResourceIdImpl second = (ResourceIdImpl)other;
             return Integer.compare(this.value, second.value);
         }
-
         @Override
         public boolean equals(Object obj) {
-            if (!(obj instanceof ResourceIdImpl)) {
+            if (! (obj instanceof ResourceIdImpl)) {
                 return false;
             }
-            ResourceIdImpl second = (ResourceIdImpl) obj;
+            ResourceIdImpl second = (ResourceIdImpl)obj;
             return this.value == second.value;
         }
-
         @Override
         public int hashCode() {
             return Integer.hashCode(this.value);
         }
-
         @Override
         public String toString() {
             return "R" + this.value;
@@ -258,23 +172,19 @@ public class Transactions {
 
     private static final class ResourceImpl extends Resource {
         private volatile long value;
-
         public ResourceImpl(ResourceId id) {
             super(id);
         }
-
         public void incValue() {
             long x = this.value;
             ++x;
             this.value = x;
         }
-
         public void decValue() {
             long x = this.value;
             --x;
             this.value = x;
         }
-
         public long getValue() {
             return this.value;
         }
@@ -282,35 +192,30 @@ public class Transactions {
 
     private static final class ResourceOpImpl extends ResourceOperation {
         private static final ResourceOpImpl singleton = new ResourceOpImpl();
-
-        private ResourceOpImpl() {
-        }
-
         public static ResourceOperation get() {
             return singleton;
         }
-
+        private ResourceOpImpl() {
+        }
         @Override
         public String toString() {
             return "OP_" + super.toString();
         }
-
         @Override
         public void execute(Resource r) {
-            if (!(r instanceof ResourceImpl)) {
+            if (! (r instanceof ResourceImpl)) {
                 throw new AssertionError("Unexpected resource type " +
                         r.getClass().getCanonicalName());
             }
-            ((ResourceImpl) r).incValue();
+            ((ResourceImpl)r).incValue();
         }
-
         @Override
         public void undo(Resource r) {
-            if (!(r instanceof ResourceImpl)) {
+            if (! (r instanceof ResourceImpl)) {
                 throw new AssertionError("Unexpected resource type " +
                         r.getClass().getCanonicalName());
             }
-            ((ResourceImpl) r).decValue();
+            ((ResourceImpl)r).decValue();
         }
     }
 }

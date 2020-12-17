@@ -20,8 +20,7 @@ import cp1.solution.TransactionManagerFactory;
 // rób co chcesz z tym kodem niczego nie gwarantuję
 
 public class Transactions2 {
-
-    static long currentTime = 0;
+    static long currentTime;
     static final boolean DEBUG_INFO = false;
 
     public static void main(String[] args) {
@@ -128,11 +127,11 @@ public class Transactions2 {
         private final TransactionManager tm;
         private final Semaphore myLock;
         private final Semaphore nextLock;
-        private boolean stopped = false;
+        private final boolean stopped;
         private final Resource[] resources;
-        private volatile boolean busy = false;
-        private volatile Scanner input = null;
-        private StringBuilder output = new StringBuilder();
+        private volatile boolean busy;
+        private volatile Scanner input;
+        private final StringBuilder output = new StringBuilder();
 
         public void pass(Scanner input) {
             this.input = input;
@@ -145,7 +144,7 @@ public class Transactions2 {
         }
 
         public Inputter(TransactionManager transactionManager, Semaphore myLock, Semaphore nextLock,
-                Resource[] resources) {
+                        Resource[] resources) {
             tm = transactionManager;
             this.myLock = myLock;
             this.nextLock = nextLock;
@@ -258,7 +257,7 @@ public class Transactions2 {
     }
 
     private static final class ResourceIdImpl implements ResourceId {
-        private static volatile int next = 0;
+        private static volatile int next;
 
         public static synchronized ResourceId generate() {
             return new ResourceIdImpl(next++);
@@ -300,7 +299,7 @@ public class Transactions2 {
     }
 
     private static final class ResourceImpl extends Resource {
-        private volatile long value = 0;
+        private volatile long value;
 
         public ResourceImpl(ResourceId id) {
             super(id);
@@ -324,7 +323,7 @@ public class Transactions2 {
     }
 
     private static final class ResourceOpInc extends ResourceOperation {
-        private final static ResourceOpInc singleton = new ResourceOpInc();
+        private static final ResourceOpInc singleton = new ResourceOpInc();
 
         public static ResourceOperation get() {
             return singleton;
@@ -358,7 +357,7 @@ public class Transactions2 {
     }
 
     private static final class ResourceOpDec extends ResourceOperation {
-        private final static ResourceOpDec singleton = new ResourceOpDec();
+        private static final ResourceOpDec singleton = new ResourceOpDec();
 
         public static ResourceOperation get() {
             return singleton;
@@ -392,7 +391,7 @@ public class Transactions2 {
     }
 
     private static final class ResourceOpErr extends ResourceOperation {
-        private final static ResourceOpErr singleton = new ResourceOpErr();
+        private static final ResourceOpErr singleton = new ResourceOpErr();
 
         public static ResourceOperation get() {
             return singleton;

@@ -15,11 +15,11 @@ public class ResourceOperationException extends Exception {
 	private final String opName;
 	
 	public ResourceOperationException(
-			ResourceId rid,
-			ResourceOperation op
+            ResourceId rid,
+            ResourceOperation op
 	) {
 		this.rid = rid;
-		this.opName = op.toString();
+        this.opName = op.toString();
 	}
 	
 	public ResourceId getResourceId() {

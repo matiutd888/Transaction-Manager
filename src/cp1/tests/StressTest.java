@@ -14,11 +14,11 @@ import java.util.*;
 
 public class StressTest {
 
-    private final static long BASE_WAIT_TIME = 500;
-    private final static long RESOURCES = 100;
-    private final static long THREADS = 20;
-    private final static long REPS = 1000;
-    private final static long INTERRUPTS = 10000;
+    private static final long BASE_WAIT_TIME = 500;
+    private static final long RESOURCES = 100;
+    private static final long THREADS = 20;
+    private static final long REPS = 1000;
+    private static final long INTERRUPTS = 10000;
 
     public static void main(String[] args) {
         System.err.println("Setting up the resources");
@@ -101,7 +101,7 @@ public class StressTest {
 
     }
 
-    private final static void expectResourceValue(ResourceImpl r, long val) {
+    private static final void expectResourceValue(ResourceImpl r, long val) {
         if (r.getValue() != val) {
             throw new AssertionError(
                     "For resource " + r.getId() +
@@ -125,7 +125,7 @@ public class StressTest {
     }
 
     private static final class ResourceIdImpl implements ResourceId {
-        private static volatile int next = 0;
+        private static volatile int next;
 
         public static synchronized ResourceId generate() {
             return new ResourceIdImpl(next++);
@@ -163,7 +163,7 @@ public class StressTest {
     }
 
     private static final class ResourceImpl extends Resource {
-        private volatile long value = 0;
+        private volatile long value;
         public ResourceImpl(ResourceId id) {
             super(id);
         }
@@ -183,7 +183,7 @@ public class StressTest {
     }
 
     private static final class ResourceOpImpl extends ResourceOperation {
-        private final static ResourceOpImpl singleton = new ResourceOpImpl();
+        private static final ResourceOpImpl singleton = new ResourceOpImpl();
         public static ResourceOperation get() {
             return singleton;
         }

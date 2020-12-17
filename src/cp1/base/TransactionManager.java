@@ -15,11 +15,11 @@ package cp1.base;
  */
 public interface TransactionManager {
 
-    public void startTransaction(
+    void startTransaction(
     ) throws
             AnotherTransactionActiveException;
 
-    public void operateOnResourceInCurrentTransaction(
+    void operateOnResourceInCurrentTransaction(
             ResourceId rid,
             ResourceOperation operation
     ) throws
@@ -29,14 +29,14 @@ public interface TransactionManager {
             ResourceOperationException,
             InterruptedException;
 
-    public void commitCurrentTransaction(
+    void commitCurrentTransaction(
     ) throws
             NoActiveTransactionException,
             ActiveTransactionAborted;
 
-    public void rollbackCurrentTransaction();
+    void rollbackCurrentTransaction();
 
-    public boolean isTransactionActive();
+    boolean isTransactionActive();
 
-    public boolean isTransactionAborted();
+    boolean isTransactionAborted();
 }

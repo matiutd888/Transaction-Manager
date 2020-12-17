@@ -9,7 +9,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class TestAllOneResource {
-    private final static long BASE_WAIT_TIME = 500;
+    private static final long BASE_WAIT_TIME = 500;
 
     public static void main(String[] args) {
         Long time1 = System.currentTimeMillis();
@@ -93,7 +93,7 @@ public class TestAllOneResource {
         }
     }
 
-    private final static void expectResourceValue(ResourceImpl r, long val) {
+    private static final void expectResourceValue(ResourceImpl r, long val) {
         if (r.getValue() != val) {
             throw new AssertionError(
                     "For resource " + r.getId() +
@@ -118,7 +118,7 @@ public class TestAllOneResource {
     }
 
     private static final class ResourceIdImpl implements ResourceId {
-        private static volatile int next = 0;
+        private static volatile int next;
         private final int value;
 
         private ResourceIdImpl(int value) {
@@ -159,7 +159,7 @@ public class TestAllOneResource {
     }
 
     private static final class ResourceImpl extends Resource {
-        private volatile long value = 0;
+        private volatile long value;
 
         public ResourceImpl(ResourceId id) {
             super(id);
@@ -183,7 +183,7 @@ public class TestAllOneResource {
     }
 
     private static final class ResourceOpImpl extends ResourceOperation {
-        private final static TestAllOneResource.ResourceOpImpl singleton = new TestAllOneResource.ResourceOpImpl();
+        private static final TestAllOneResource.ResourceOpImpl singleton = new TestAllOneResource.ResourceOpImpl();
 
         private ResourceOpImpl() {
         }

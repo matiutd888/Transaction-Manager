@@ -9,6 +9,6 @@ package cp1.base;
 
 public interface LocalTimeProvider {
 
-	public long getTime();
+	long getTime();
 	
 }
