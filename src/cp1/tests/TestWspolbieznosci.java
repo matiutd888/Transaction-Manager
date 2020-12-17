@@ -89,8 +89,6 @@ public class TestWspolbieznosci {
         } catch (InterruptedException e) {
             throw new AssertionError("The main thread has been interrupted");
         }
-
-        tm.print();
     }
 
     private final static void expectResourceValue(ResourceImpl r, long val) {

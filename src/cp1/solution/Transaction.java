@@ -1,22 +1,22 @@
 package cp1.solution;
 
 import cp1.base.Resource;
-import cp1.base.ResourceId;
 import cp1.base.ResourceOperation;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
 
 public class Transaction {
-    private TransactionState state;
-    private long startTime;
-    private Thread thread;
-    private Map<Resource, List<ResourceOperation>> resourcesChangedByTransaction;
+    private final long startTime;
+    private final Thread thread;
+    private final Map<Resource, Stack<ResourceOperation>> resourcesChangedByTransaction = new HashMap<>();
+    private TransactionState state = TransactionState.NOT_ABORTED;
 
     public Transaction(long startTime, Thread thread) {
         this.startTime = startTime;
         this.thread = thread;
-        state = TransactionState.NOT_ABORTED;
-        resourcesChangedByTransaction = new HashMap<>();
     }
 
     public TransactionState getState() {
@@ -32,15 +32,17 @@ public class Transaction {
     }
 
     public void rollback() {
-        for (Map.Entry<Resource, List<ResourceOperation>> entry : resourcesChangedByTransaction.entrySet()) {
-            for (ResourceOperation op : entry.getValue()) {
+        for (Map.Entry<Resource, Stack<ResourceOperation>> entry : resourcesChangedByTransaction.entrySet()) {
+            Stack<ResourceOperation> s = entry.getValue();
+            while (!s.empty()) {
+                ResourceOperation op = s.pop();
                 op.undo(entry.getKey());
             }
         }
     }
 
     public void updateOperationHistory(Resource resource, ResourceOperation operation) {
-        resourcesChangedByTransaction.putIfAbsent(resource, new LinkedList<>());
+        resourcesChangedByTransaction.putIfAbsent(resource, new Stack<>());
         resourcesChangedByTransaction.get(resource).add(operation);
     }
 
