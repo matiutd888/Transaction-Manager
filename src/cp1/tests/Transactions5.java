@@ -97,9 +97,9 @@ public class Transactions5 {
                                             ResourceOpImpl.get()
                                     );
 
-                                    interrupt = r.nextInt(10);
+                                    /*interrupt = r.nextInt(10);
                                     if (interrupt < 5)
-                                        Thread.currentThread().interrupt();
+                                        Thread.currentThread().interrupt();*/
 
                                     Thread.sleep(r.nextInt(3) * BASE_WAIT_TIME);
                                     Resource rr = resources.get(r.nextInt(3));
@@ -116,8 +116,8 @@ public class Transactions5 {
                                     Thread.sleep(r.nextInt(4) * BASE_WAIT_TIME);
                                     Thread.currentThread().interrupt();
                                     interrupt = r.nextInt(10);
-                                    if (interrupt < 3)
-                                        Thread.currentThread().interrupt();
+                                   /* if (interrupt < 3)
+                                        Thread.currentThread().interrupt();*/
                                     tm.commitCurrentTransaction();
                                     if (tm.isTransactionActive()) {
                                         throw new AssertionError("Failed to commit a transaction");

@@ -63,10 +63,14 @@ public class MyManager implements TransactionManager {
         boolean hasAccess = false;
         synchronized (operating) {
             operatingThread = operating.get(rid);
+            int id = operatingThread == null ? -1 : (int) operatingThread.getId();
+
+            System.out.println("WĄTEK " + currentThread.getId() + " PROBUJE SIE DOSTAC DO " + rid + " w posiadaniu " + id);
             hasAccess = (operatingThread == null && countWaitingForResource.getOrDefault(rid, 0) == 0)
                     || operatingThread == currentThread;
             if (hasAccess) {
                 operating.put(rid, currentThread);
+                System.out.println("WĄTEK " + currentThread.getId() + " DOSTAJE " + rid + " w posiadaniu " + id);
             } else {
                 // Mark, that you will be waiting.
                 waiting.put(currentThread, rid);
@@ -77,6 +81,7 @@ public class MyManager implements TransactionManager {
                 }
             }
         }
+
         if (!hasAccess) {
             // If you are going to be waiting because a
             // awaken resource hasnt claimed his resource
@@ -87,7 +92,7 @@ public class MyManager implements TransactionManager {
                 s.acquire();
             } catch (InterruptedException interruptedException) {
                 // You didnt get access, undo your waiting.
-
+                System.out.println("WĄTEK " + Thread.currentThread().getId() + " INTERRPUTED WHILE WAITING!");
                 synchronized (operating) {
                     waiting.remove(currentThread, rid);
                     // TODO do i need ochrona for this?
@@ -107,6 +112,7 @@ public class MyManager implements TransactionManager {
             }
             // If a thread made it here, it has access to resource.
             synchronized (operating) {
+                System.out.println("WĄTEK " + currentThread.getId() + " DOSTAJE " + rid + " po czekaniu");
 
                 // operating.remove(rid);
                 operating.put(rid, currentThread);
@@ -121,10 +127,69 @@ public class MyManager implements TransactionManager {
             throw roe;
         }
         if (currentThread.isInterrupted()) {
+            System.out.println("WĄTEK " + Thread.currentThread().getId() + " INTERRPUTED WHILE OPERATION! " + rid);
             operation.undo(res);
             throw new InterruptedException();
         }
         currTransaction.updateOperationHistory(res, operation);
+    }
+
+    private void checkForCycle(ResourceId resourceId) {
+        try {
+            System.out.println("WĄTEK " + Thread.currentThread().getId() + " SPRAWDZA CYKL CZEKAJĄC NA " + resourceId);
+            boolean end = false;
+            boolean isCycle = false;
+            ResourceId startResource = resourceId;
+            Thread youngestThread;
+
+            Thread itThread = operating.get(resourceId);
+            youngestThread = itThread;
+
+            long maxTime = -1;
+            try {
+                maxTime = transactions.get(itThread).getStartTime();
+            } catch (NullPointerException e) {
+                System.err.println("NULL POINTER EXCEPTION " + Thread.currentThread().getId() + ", " + itThread.getId() + ", " + resourceId);
+            }
+            while (!end) {
+                ResourceId waitingRes = waiting.get(itThread);
+                if (waitingRes == startResource) {
+                    // Cycle found!
+                    isCycle = true;
+                    end = true;
+                }
+                if (waitingRes == null)
+                    return;
+                itThread = operating.get(waitingRes);
+                if (itThread == null)
+                    return;
+
+                Transaction itTransaction = transactions.get(itThread);
+
+                // Shouldnt be nessesarry, but lets check anyway.
+                if (itTransaction.getState() == TransactionState.ABORTED)
+                    return;
+
+                long time = itTransaction.getStartTime();
+                if (time > maxTime || (time == maxTime && itThread.getId() > youngestThread.getId())) {
+                    maxTime = time;
+                    youngestThread = itThread;
+                }
+            }
+            if (isCycle) {
+                System.out.println("START TIMES");
+                for (Map.Entry<Thread, Transaction> e : transactions.entrySet()) {
+                    System.out.println(e.getKey().getId() + " start time = " + e.getValue().getStartTime());
+                }
+                System.out.println("Cykl wykryty, watek: " + youngestThread.getId());
+                // cancel
+                Transaction toCancel = transactions.get(youngestThread);
+                toCancel.cancel();
+                youngestThread.interrupt();
+            }
+        } finally {
+            System.out.println("WĄTEK " + Thread.currentThread().getId() + " kończy sprawdzanie!");
+        }
     }
 
     @Override
@@ -136,71 +201,25 @@ public class MyManager implements TransactionManager {
         if (currentTransaction.getState() == TransactionState.ABORTED)
             throw new ActiveTransactionAborted();
 
-        transactions.remove(currentThread);
 
         // Free resources.
         Set<Resource> changedResources = currentTransaction.getResourcesChanged();
         synchronized (operating) {
-            for (Resource r : changedResources) {
-                ResourceId rid = r.getId();
-                int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
-                operating.remove(rid);
-                if (howManyWaiting > 0) {
-                    Semaphore s = waitForResource.get(r.getId());
-                    s.release();
+            for (Map.Entry<ResourceId, Thread> entry : operating.entrySet()) {
+                if (entry.getValue() == currentThread) {
+                    ResourceId rid = entry.getKey();
+                    int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
+                    operating.remove(rid);
+                    System.out.println("WĄTEK " + currentThread.getId() + " removing " + rid);
+                    if (howManyWaiting > 0) {
+                        Semaphore s = waitForResource.get(rid);
+                        s.release();
+                    }
                 }
             }
+            transactions.remove(currentThread);
+            System.out.println("WĄTEK " + currentThread.getId() + " usuwa transakcję!");
         }
-    }
-
-    private void checkForCycle(ResourceId resourceId) {
-        boolean end = false;
-        boolean isCycle = false;
-        ResourceId startResource = resourceId;
-        Thread youngestThread;
-
-        Thread itThread = operating.get(resourceId);
-        if (itThread == null)
-            return;
-        youngestThread = itThread;
-        long maxTime = transactions.get(itThread).getStartTime();
-        while (!end) {
-            ResourceId waitingRes = waiting.get(itThread);
-            if (waitingRes == startResource) {
-                // Cycle found!
-                isCycle = true;
-                end = true;
-            }
-            if (waitingRes == null)
-                return;
-            itThread = operating.get(waitingRes);
-            if (itThread == null)
-                return;
-
-            Transaction itTransaction = transactions.get(itThread);
-
-            // Shouldnt be nessesarry, but lets check anyway.
-            if (itTransaction.getState() == TransactionState.ABORTED)
-                return;
-
-            long time = itTransaction.getStartTime();
-            if (time > maxTime || (time == maxTime && itThread.getId() > youngestThread.getId())) {
-                maxTime = time;
-                youngestThread = itThread;
-            }
-        }
-        if (isCycle) {
-            System.out.println("START TIMES");
-            for (Map.Entry<Thread, Transaction> e : transactions.entrySet()) {
-                System.out.println(e.getKey().getId() + " start time = " + e.getValue().getStartTime());
-            }
-            System.out.println("Cykl wykryty, watek: " + youngestThread.getId());
-            // cancel
-            Transaction toCancel = transactions.get(youngestThread);
-            toCancel.cancel();
-            youngestThread.interrupt();
-        }
-
     }
 
     @Override
@@ -209,20 +228,24 @@ public class MyManager implements TransactionManager {
         Transaction currentTransaction = transactions.get(currentThread);
         if (currentTransaction == null)
             return;
-        transactions.remove(currentThread);
         currentTransaction.rollback();
         // Free resources.
         Set<Resource> changedResources = currentTransaction.getResourcesChanged();
         synchronized (operating) {
-            for (Resource r : changedResources) {
-                ResourceId rid = r.getId();
-                int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
-                operating.remove(rid);
-                if (howManyWaiting > 0) {
-                    Semaphore s = waitForResource.get(r.getId());
-                    s.release();
+            for (Map.Entry<ResourceId, Thread> entry : operating.entrySet()) {
+                if (entry.getValue() == currentThread) {
+                    ResourceId rid = entry.getKey();
+                    int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
+                    operating.remove(rid);
+                    System.out.println("WĄTEK " + currentThread.getId() + " removing " + rid);
+                    if (howManyWaiting > 0) {
+                        Semaphore s = waitForResource.get(rid);
+                        s.release();
+                    }
                 }
             }
+            transactions.remove(currentThread);
+            System.out.println("WĄTEK " + currentThread.getId() + " usuwa transakcję!");
         }
     }
 
