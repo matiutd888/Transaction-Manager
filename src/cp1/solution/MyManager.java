@@ -215,7 +215,7 @@ public class MyManager implements TransactionManager {
 
 
         // Free resources.
-        Set<Resource> changedResources = currentTransaction.getResourcesChanged();
+        // we can only do this because currentTransaction.getResourcesChanged() has no side effects
         synchronized (operating) {
             for (Map.Entry<ResourceId, Thread> entry : operating.entrySet()) {
                 if (entry.getValue() == currentThread) {
@@ -242,7 +242,7 @@ public class MyManager implements TransactionManager {
             return;
         currentTransaction.rollback();
         // Free resources.
-        Set<Resource> changedResources = currentTransaction.getResourcesChanged();
+        // we can only do this because currentTransaction.getResourcesChanged() has no side effects
         synchronized (operating) {
             for (Map.Entry<ResourceId, Thread> entry : operating.entrySet()) {
                 if (entry.getValue() == currentThread) {
