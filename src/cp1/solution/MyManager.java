@@ -213,25 +213,7 @@ public class MyManager implements TransactionManager {
         if (currentTransaction.getState() == TransactionState.ABORTED)
             throw new ActiveTransactionAborted();
 
-
-        // Free resources.
-        // we can only do this because currentTransaction.getResourcesChanged() has no side effects
-        synchronized (operating) {
-            for (Map.Entry<ResourceId, Thread> entry : operating.entrySet()) {
-                if (entry.getValue() == currentThread) {
-                    ResourceId rid = entry.getKey();
-                    int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
-                    operating.remove(rid);
-                    System.out.println("WĄTEK " + currentThread.getId() + " removing " + rid);
-                    if (howManyWaiting > 0) {
-                        Semaphore s = waitForResource.get(rid);
-                        s.release();
-                    }
-                }
-            }
-            transactions.remove(currentThread);
-            System.out.println("WĄTEK " + currentThread.getId() + " usuwa transakcję!");
-        }
+        freeResources();
     }
 
     @Override
@@ -241,8 +223,11 @@ public class MyManager implements TransactionManager {
         if (currentTransaction == null)
             return;
         currentTransaction.rollback();
-        // Free resources.
-        // we can only do this because currentTransaction.getResourcesChanged() has no side effects
+        freeResources();
+    }
+
+    private void freeResources() {
+        Thread currentThread = Thread.currentThread();
         synchronized (operating) {
             for (Map.Entry<ResourceId, Thread> entry : operating.entrySet()) {
                 if (entry.getValue() == currentThread) {
