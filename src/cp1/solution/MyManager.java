@@ -10,26 +10,20 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
 
 public class MyManager implements TransactionManager {
-    private ConcurrentHashMap<Thread, Transaction> transactions; // Current thread transaction/
+    private ConcurrentHashMap<Thread, Transaction> transactions = new ConcurrentHashMap<>(); // Current thread transaction/
     private LocalTimeProvider timeProvider;
-    private ConcurrentMap<ResourceId, Resource> resources;
-    private ConcurrentMap<ResourceId, Thread> operating; // Which thread has access to resource.
-    private ConcurrentMap<Thread, ResourceId> waiting; // Holds information about a resource that a thred is waiting for.
-    private ConcurrentMap<ResourceId, Semaphore> waitForResource; // For every Resource it stores a semaphore that is used to wait for resource to get free.
-    private ConcurrentMap<ResourceId, Integer> countWaitingForResource; // Holds information about number of threads waiting for resource.
+    private ConcurrentMap<ResourceId, Resource> resources = new ConcurrentHashMap<>();
+    private ConcurrentMap<ResourceId, Thread> operating = new ConcurrentHashMap<>(); // Which thread has access to resource.
+    private ConcurrentMap<Thread, ResourceId> waiting = new ConcurrentHashMap<>(); // Holds information about a resource that a thred is waiting for.
+    private ConcurrentMap<ResourceId, Semaphore> waitForResource = new ConcurrentHashMap<>(); // For every Resource it stores a semaphore that is used to wait for resource to get free.
+    private ConcurrentMap<ResourceId, Integer> countWaitingForResource = new ConcurrentHashMap<>(); // Holds information about number of threads waiting for resource.
 
     public MyManager(Collection<Resource> resources, LocalTimeProvider timeProvider) {
-        this.resources = new ConcurrentHashMap<>();
-        waitForResource = new ConcurrentHashMap<>();
         for (Resource r : resources) {
             this.resources.put(r.getId(), r);
             waitForResource.put(r.getId(), new Semaphore(0, true));
         }
-        waiting = new ConcurrentHashMap<>();
         this.timeProvider = timeProvider;
-        transactions = new ConcurrentHashMap<>();
-        operating = new ConcurrentHashMap<>();
-        countWaitingForResource = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -252,9 +246,7 @@ public class MyManager implements TransactionManager {
     @Override
     public boolean isTransactionActive() {
         Transaction t = transactions.get(Thread.currentThread());
-        if (t == null)
-            return false;
-        return true;
+        return t != null;
     }
 
     @Override
