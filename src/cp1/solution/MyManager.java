@@ -133,11 +133,9 @@ public class MyManager implements TransactionManager {
                 countWaitingForResource.put(rid, howManyWaiting - 1);
             }
         }
-        try {
-            operation.execute(res);
-        } catch (ResourceOperationException roe) {
-            throw roe;
-        }
+
+        operation.execute(res);
+
         if (currentThread.isInterrupted()) {
             System.out.println("WĄTEK " + Thread.currentThread().getId() + " INTERRPUTED WHILE OPERATION! " + rid);
             operation.undo(res);
