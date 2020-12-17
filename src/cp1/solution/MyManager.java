@@ -10,13 +10,13 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
 
 public class MyManager implements TransactionManager {
-    private ConcurrentHashMap<Thread, Transaction> transactions = new ConcurrentHashMap<>(); // Current thread transaction/
-    private LocalTimeProvider timeProvider;
-    private ConcurrentMap<ResourceId, Resource> resources = new ConcurrentHashMap<>();
-    private ConcurrentMap<ResourceId, Thread> operating = new ConcurrentHashMap<>(); // Which thread has access to resource.
-    private ConcurrentMap<Thread, ResourceId> waiting = new ConcurrentHashMap<>(); // Holds information about a resource that a thred is waiting for.
-    private ConcurrentMap<ResourceId, Semaphore> waitForResource = new ConcurrentHashMap<>(); // For every Resource it stores a semaphore that is used to wait for resource to get free.
-    private ConcurrentMap<ResourceId, Integer> countWaitingForResource = new ConcurrentHashMap<>(); // Holds information about number of threads waiting for resource.
+    private final ConcurrentHashMap<Thread, Transaction> transactions = new ConcurrentHashMap<>(); // Current thread transaction/
+    private final LocalTimeProvider timeProvider;
+    private final ConcurrentMap<ResourceId, Resource> resources = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ResourceId, Thread> operating = new ConcurrentHashMap<>(); // Which thread has access to resource.
+    private final ConcurrentMap<Thread, ResourceId> waiting = new ConcurrentHashMap<>(); // Holds information about a resource that a thred is waiting for.
+    private final ConcurrentMap<ResourceId, Semaphore> waitForResource = new ConcurrentHashMap<>(); // For every Resource it stores a semaphore that is used to wait for resource to get free.
+    private final ConcurrentMap<ResourceId, Integer> countWaitingForResource = new ConcurrentHashMap<>(); // Holds information about number of threads waiting for resource.
 
     public MyManager(Collection<Resource> resources, LocalTimeProvider timeProvider) {
         for (Resource r : resources) {
