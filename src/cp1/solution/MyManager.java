@@ -13,7 +13,7 @@ public class MyManager implements TransactionManager {
     /**
      * Current thread transaction
      */
-    private final ConcurrentMap<Thread, Transaction> transactions = new ConcurrentHashMap<>(); // Current thread transaction/
+    private final ConcurrentMap<Thread, Transaction> transactions = new ConcurrentHashMap<>();
     /**
      * Current thread transaction
      */
@@ -21,19 +21,19 @@ public class MyManager implements TransactionManager {
     /**
      * Which thread has access to resource.
      */
-    private final ConcurrentMap<ResourceId, Thread> operating = new ConcurrentHashMap<>(); // Which thread has access to resource.
+    private final ConcurrentMap<ResourceId, Thread> operating = new ConcurrentHashMap<>();
     /**
      * Holds information about a resource that a thred is waiting for.
      */
-    private final ConcurrentMap<Thread, ResourceId> waiting = new ConcurrentHashMap<>(); // Holds information about a resource that a thred is waiting for.
+    private final ConcurrentMap<Thread, ResourceId> waiting = new ConcurrentHashMap<>();
     /**
      * For every Resource it stores a semaphore that is used to wait for resource to get free.
      */
-    private final ConcurrentMap<ResourceId, Semaphore> waitForResource = new ConcurrentHashMap<>(); // For every Resource it stores a semaphore that is used to wait for resource to get free.
+    private final ConcurrentMap<ResourceId, Semaphore> waitForResource = new ConcurrentHashMap<>();
     /**
      * Holds information about number of threads waiting for resource.
      */
-    private final ConcurrentMap<ResourceId, Integer> countWaitingForResource = new ConcurrentHashMap<>(); // Holds information about number of threads waiting for resource.
+    private final ConcurrentMap<ResourceId, Integer> countWaitingForResource = new ConcurrentHashMap<>();
 
     public MyManager(Collection<Resource> resources, LocalTimeProvider timeProvider) {
         for (Resource r : resources) {
