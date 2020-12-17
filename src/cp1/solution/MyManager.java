@@ -278,10 +278,11 @@ public class MyManager implements TransactionManager {
 
     // DEBUG
     public void print() {
-        System.out.println(transactions.size() + ", "
-                + operating.size() + ", "
-                + waiting.size() + ", "
-                + waitForResource.size() + ", "
-                + countWaitingForResource);
+        System.out.println(String.format("%d, %d, %d, %d, %d",
+                transactions.size(),
+                operating.size(),
+                waiting.size(),
+                waitForResource.size(),
+                countWaitingForResource.size()));
     }
 }
