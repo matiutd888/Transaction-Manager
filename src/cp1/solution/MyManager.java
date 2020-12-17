@@ -14,7 +14,7 @@ public class MyManager implements TransactionManager {
     /**
      * Current thread transaction
      */
-    private final ConcurrentHashMap<Thread, Transaction> transactions = new ConcurrentHashMap<>(); // Current thread transaction/
+    private final ConcurrentMap<Thread, Transaction> transactions = new ConcurrentHashMap<>(); // Current thread transaction/
     /**
      * Current thread transaction
      */
