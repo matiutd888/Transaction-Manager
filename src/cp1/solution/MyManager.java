@@ -11,11 +11,29 @@ import java.util.concurrent.Semaphore;
 
 public class MyManager implements TransactionManager {
     private final LocalTimeProvider timeProvider;
+    /**
+     * Current thread transaction
+     */
     private final ConcurrentHashMap<Thread, Transaction> transactions = new ConcurrentHashMap<>(); // Current thread transaction/
+    /**
+     * Current thread transaction
+     */
     private final ConcurrentMap<ResourceId, Resource> resources = new ConcurrentHashMap<>();
+    /**
+     * Which thread has access to resource.
+     */
     private final ConcurrentMap<ResourceId, Thread> operating = new ConcurrentHashMap<>(); // Which thread has access to resource.
+    /**
+     * Holds information about a resource that a thred is waiting for.
+     */
     private final ConcurrentMap<Thread, ResourceId> waiting = new ConcurrentHashMap<>(); // Holds information about a resource that a thred is waiting for.
+    /**
+     * For every Resource it stores a semaphore that is used to wait for resource to get free.
+     */
     private final ConcurrentMap<ResourceId, Semaphore> waitForResource = new ConcurrentHashMap<>(); // For every Resource it stores a semaphore that is used to wait for resource to get free.
+    /**
+     * Holds information about number of threads waiting for resource.
+     */
     private final ConcurrentMap<ResourceId, Integer> countWaitingForResource = new ConcurrentHashMap<>(); // Holds information about number of threads waiting for resource.
 
     public MyManager(Collection<Resource> resources, LocalTimeProvider timeProvider) {
