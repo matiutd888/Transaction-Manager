@@ -71,7 +71,8 @@ public class MyManager implements TransactionManager {
         }
 
         Thread operatingThread;
-        boolean hasAccess = false; // IMO: GOOD, po usunieciu redundancji, ktos moglby sie zastanawiac czy nie zapomniales zainicjalizowac. (chodzi o to, ze boolean domyslnie inicjalizuje sie do false) (subjectivity: 50%)
+        boolean hasAccess = false;  // stara wersja: IMO: GOOD, po usunieciu redundancji, ktos moglby sie zastanawiac czy nie zapomniales zainicjalizowac. (chodzi o to, ze boolean domyslnie inicjalizuje sie do false) (subjectivity: 50%)
+                                    // EDIT: jednak zle bo kilka lini dalej przypisujesz tutaj cos innego (subjectivity: 0%)
         synchronized (operating) {
             operatingThread = operating.get(rid);
             int id = operatingThread == null ? -1 : (int) operatingThread.getId();
