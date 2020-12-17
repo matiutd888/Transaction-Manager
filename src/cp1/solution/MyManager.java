@@ -38,7 +38,7 @@ public class MyManager implements TransactionManager {
     public MyManager(Collection<Resource> resources, LocalTimeProvider timeProvider) {
         for (Resource r : resources) {
             this.resources.put(r.getId(), r);
-            waitForResource.put(r.getId(), new Semaphore(0, true));
+            waitForResource.put(r.getId(), new Semaphore(0, true));  // semafory w java domyslnie sa fair, niepotrzebny parametr, ale redundancja moze byc celowa i przydatna jesli chcemy dac do zrozumienia ze fakt: "fair = true" jest wazny. (subjectivity: $DEPENDS-ON-RATIONALE%)
         }
         this.timeProvider = timeProvider;
     }
@@ -71,7 +71,7 @@ public class MyManager implements TransactionManager {
         }
 
         Thread operatingThread;
-        boolean hasAccess = false;
+        boolean hasAccess = false; // IMO: GOOD, po usunieciu redundancji, ktos moglby sie zastanawiac czy nie zapomniales zainicjalizowac. (chodzi o to, ze boolean domyslnie inicjalizuje sie do false) (subjectivity: 50%)
         synchronized (operating) {
             operatingThread = operating.get(rid);
             int id = operatingThread == null ? -1 : (int) operatingThread.getId();
@@ -106,7 +106,7 @@ public class MyManager implements TransactionManager {
                 System.out.println("WĄTEK " + Thread.currentThread().getId() + " INTERRPUTED WHILE WAITING!");
                 synchronized (operating) {
                     waiting.remove(currentThread, rid);
-                    // TODO do i need ochrona for this?
+                    // TODO do i need ochrona for this? IMO: TODOS są najs! (subjectivity: 40%)
                     int howManyWaiting = countWaitingForResource.getOrDefault(rid, 0);
                     countWaitingForResource.put(rid, howManyWaiting - 1);
                     // Kod na złośliwy przeplot: Po interrputedException
@@ -147,7 +147,7 @@ public class MyManager implements TransactionManager {
         try {
             System.out.println("WĄTEK " + Thread.currentThread().getId() + " SPRAWDZA CYKL CZEKAJĄC NA " + resourceId);
             boolean end = false;
-            ResourceId startResource = resourceId;
+            ResourceId startResource = resourceId;  // Probably delete this. I get why you did this. This redundancy might be good, but is VERY hard to swallow (chodzi o to ze start resource nie jest potrzebne, ale jego nazwa sugeruje zastosowanie w kodzie (iterowanie). z drugiej strony nie mozna zmienic nazwy parametru na startResource, bo to moze zastanowic uzytkownika funkcji (kod wywolujacy), a tego nalezy unikac) (subjectivity: 30%)
             Thread youngestThread;
 
             Thread itThread = operating.get(resourceId);
@@ -173,7 +173,7 @@ public class MyManager implements TransactionManager {
 
                 Transaction itTransaction = transactions.get(itThread);
 
-                // Shouldnt be nessesarry, but lets check anyway.
+                // Shouldnt be nessesarry, but lets check anyway. PIZDA. (subjectivity: 0%)
                 if (itTransaction.getState() == TransactionState.ABORTED)
                     return;
 
