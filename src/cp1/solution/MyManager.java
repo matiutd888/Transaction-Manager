@@ -150,7 +150,6 @@ public class MyManager implements TransactionManager {
         try {
             System.out.println("WĄTEK " + Thread.currentThread().getId() + " SPRAWDZA CYKL CZEKAJĄC NA " + resourceId);
             boolean end = false;
-            boolean isCycle = false;
             ResourceId startResource = resourceId;
             Thread youngestThread;
 
@@ -167,7 +166,6 @@ public class MyManager implements TransactionManager {
                 ResourceId waitingRes = waiting.get(itThread);
                 if (waitingRes == startResource) {
                     // Cycle found!
-                    isCycle = true;
                     end = true;
                 }
                 if (waitingRes == null)
@@ -188,17 +186,15 @@ public class MyManager implements TransactionManager {
                     youngestThread = itThread;
                 }
             }
-            if (isCycle) {
-                System.out.println("START TIMES");
-                for (Map.Entry<Thread, Transaction> e : transactions.entrySet()) {
-                    System.out.println(e.getKey().getId() + " start time = " + e.getValue().getStartTime());
-                }
-                System.out.println("Cykl wykryty, watek: " + youngestThread.getId());
-                // cancel
-                Transaction toCancel = transactions.get(youngestThread);
-                toCancel.cancel();
-                youngestThread.interrupt();
+            System.out.println("START TIMES");
+            for (Map.Entry<Thread, Transaction> e : transactions.entrySet()) {
+                System.out.println(e.getKey().getId() + " start time = " + e.getValue().getStartTime());
             }
+            System.out.println("Cykl wykryty, watek: " + youngestThread.getId());
+            // cancel
+            Transaction toCancel = transactions.get(youngestThread);
+            toCancel.cancel();
+            youngestThread.interrupt();
         } finally {
             System.out.println("WĄTEK " + Thread.currentThread().getId() + " kończy sprawdzanie!");
         }
