@@ -127,7 +127,7 @@ public class Transactions2 {
         private final TransactionManager tm;
         private final Semaphore myLock;
         private final Semaphore nextLock;
-        private final boolean stopped;
+        private final boolean stopped = false;
         private final Resource[] resources;
         private volatile boolean busy;
         private volatile Scanner input;
