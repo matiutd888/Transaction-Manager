@@ -1,0 +1,48 @@
+3
+3
+# this test verify if your TM detects 3 member deadlocks
+# and if it aborts one started latest
+thread 0 transaction
+thread 2 transaction
+advanceTime
+thread 1 transaction
+thread 0 increase 0
+thread 1 increase 1
+thread 2 increase 2
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+assertNoBusy 2
+thread 0 increase 1
+thread 1 increase 2
+# no dead lock yet
+sleep 100
+assertBusy 0
+assertBusy 1
+assertNoBusy 2
+thread 2 increase 0
+# dead lock here
+# thread 1 should be aborted since its transaction started later
+sleep 100
+assertBusy 0
+assertNoBusy 1
+assertBusy 2
+thread 1 rollback
+# now thread 0 is able to complete its operation since resource 1 was released
+# thread 2 is still waiting for resource 0 which is locked by thread 0
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+assertBusy 2
+thread 0 commit
+# finally thread 2 acquire access to resource 0 and it is free to complete its actions
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+assertNoBusy 2
+thread 2 commit
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+assertNoBusy 2
+assertResources 2 1 1
