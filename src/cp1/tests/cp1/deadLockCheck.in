@@ -1,0 +1,27 @@
+3
+3
+# check if TM is detecting 2 transaction deadlock
+thread 0 transaction
+thread 1 transaction
+thread 0 increase 0
+thread 1 increase 1
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+thread 0 decrease 1
+sleep 100
+assertBusy 0
+assertNoBusy 1
+# deadlock here
+thread 1 increase 0
+sleep 100
+# thread 1 should be aborted since its thread id is greater
+assertBusy 0
+assertNoBusy 1
+thread 1 rollback
+sleep 100
+# thread 1 releases all resources so thread 0 is free to continue
+assertNoBusy 0
+assertNoBusy 1
+thread 0 commit
+assertResources 1 -1 0

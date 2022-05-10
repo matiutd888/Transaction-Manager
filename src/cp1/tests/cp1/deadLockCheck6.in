@@ -1,0 +1,166 @@
+10
+6
+# test for detection of 6 threads deadlock
+# start transactions
+thread 0 transaction
+thread 3 transaction
+advanceTime
+thread 2 transaction
+thread 4 transaction
+advanceTime
+thread 5 transaction
+thread 1 transaction
+# acquirement of resources
+thread 0 increase 0
+thread 1 increase 2
+thread 2 increase 4
+thread 3 increase 6
+thread 4 increase 8
+thread 5 increase 1
+thread 0 decrease 5
+thread 1 decrease 7
+thread 2 decrease 9
+thread 4 error 3
+# no waiting so far
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+assertNoBusy 2
+assertNoBusy 3
+assertNoBusy 4
+assertNoBusy 5
+# next operations should results in error but they should cause no locks since
+# thread operation on resources they acquire previously
+thread 0 error 0
+thread 1 error 2
+thread 2 error 4
+thread 3 error 6
+thread 4 error 8
+thread 5 error 1
+thread 0 error 5
+thread 1 error 7
+thread 2 error 9
+#
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+assertNoBusy 2
+assertNoBusy 3
+assertNoBusy 4
+assertNoBusy 5
+#
+thread 0 increase 7
+thread 1 increase 9
+thread 2 increase 6
+thread 3 increase 8
+thread 4 increase 1
+# no dead lock yet (only waiting)
+sleep 100
+assertBusy 0
+assertBusy 1
+assertBusy 2
+assertBusy 3
+assertBusy 4
+assertNoBusy 5
+# first dead lock thread 5 should be aborted
+thread 5 error 0
+sleep 100
+assertBusy 0
+assertBusy 1
+assertBusy 2
+assertBusy 3
+assertBusy 4
+assertNoBusy 5
+# by now resources info should be 
+assertResources 1 1 1 0 1 -1 1 -1 1 -1
+thread 5 rollback
+sleep 100
+# after rollback resources info should be
+assertResources 1 1 1 0 1 -1 1 -1 1 -1
+# because resource 1 value should be rolled back to 0, but then immediately changed to 1 by thread 4
+sleep 100
+assertBusy 0
+assertBusy 1
+assertBusy 2
+assertBusy 3
+assertNoBusy 4
+assertNoBusy 5
+# second dead lock thread 1 should be aborted
+thread 4 increase 0
+sleep 100
+assertBusy 0
+assertNoBusy 1
+assertBusy 2
+assertBusy 3
+assertBusy 4
+assertNoBusy 5
+thread 1 rollback
+# resource 7 acquired by thread 0 should be available by now
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+assertBusy 2
+assertBusy 3
+assertBusy 4
+assertNoBusy 5
+assertResources 1 1 0 0 1 -1 1 1 1 -1
+# here I implemented parser functionality to skip empty lines
+
+
+
+
+# what a relief
+thread 0 increase 3
+# you won't believe what happens here
+# another deadlock :|
+# thread 4 should be aborted
+sleep 100
+assertBusy 0
+assertNoBusy 1
+assertBusy 2
+assertBusy 3
+assertNoBusy 4
+assertNoBusy 5
+
+
+thread 4 rollback
+# but this time it releases resource (ids: 3, 8) requested both by thread 0 and thread 3
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+assertBusy 2
+assertNoBusy 3
+assertNoBusy 4
+assertNoBusy 5
+
+
+thread 3 increase 4
+# dead lock thread 2 odd to die
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+assertNoBusy 2
+assertBusy 3
+assertNoBusy 4
+assertNoBusy 5
+
+thread 2 rollback
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+assertNoBusy 2
+assertNoBusy 3
+assertNoBusy 4
+assertNoBusy 5
+
+thread 0 commit
+thread 3 commit
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+assertNoBusy 2
+assertNoBusy 3
+assertNoBusy 4
+assertNoBusy 5
+
+assertResources 1 0 0 1 1 -1 1 1 1 0

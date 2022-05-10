@@ -1,0 +1,43 @@
+3
+3
+# this test verify if your TM detects 3 member deadlock
+thread 0 transaction
+thread 1 transaction
+thread 2 transaction
+thread 0 increase 0
+thread 1 increase 1
+thread 2 increase 2
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+assertNoBusy 2
+thread 0 increase 1
+thread 1 increase 2
+# no dead lock yet
+sleep 100
+assertBusy 0
+assertBusy 1
+assertNoBusy 2
+thread 2 increase 0
+# dead lock here
+# thread 2 should be aborted since its thread id is greater than others
+sleep 100
+assertBusy 0
+assertBusy 1
+assertNoBusy 2
+thread 2 rollback
+sleep 100
+assertBusy 0
+assertNoBusy 1
+assertNoBusy 2
+thread 1 commit
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+assertNoBusy 2
+thread 0 commit
+sleep 100
+assertNoBusy 0
+assertNoBusy 1
+assertNoBusy 2
+assertResources 1 2 1
